@@ -21,6 +21,7 @@ Everything sloperinaGZ can do, menu by menu. New to it? Start with the [usage gu
   - [2.10 Settings](#210-settings)
   - [2.11 Log](#211-log)
   - [2.12 About](#212-about)
+  - [2.13 Macro](#213-macro)
 - [3 On the screen](#3-on-the-screen)
 - [4 About frame advance](#4-about-frame-advance)
 - [5 Settings file](#5-settings-file)
@@ -336,6 +337,39 @@ second. It starts fresh each time the game starts. Send it along when you report
 
 The name and version, the build date ("Build Date: ..."), and the website.
 
+### 2.13 Macro
+
+gz's macros: record the input the game is given, a frame at a time, and play it back. The menu is between
+**watches** and **debug**.
+
+| Item | What it does |
+|---|---|
+| status line | **stopped**, **recording** or **playing**, the current macro frame and how many frames the macro has. |
+| **record** | Records from the current macro frame on, overwriting what's there. Each frame stores the buttons and both sticks exactly as the game got them, so frame advance's buffered input is recorded and the frame advance button isn't. |
+| **play** | Plays from the current macro frame. The next game frame gets that frame's input, and so on until the end; then the controller is back. |
+| **stop** | Stops recording or playing. |
+| **macro frame** | The current frame, out of the total. **D-pad left / right** moves it: play or record from there. |
+| **rewind** | The current frame to 0. |
+| **trim** | Forgets every frame after the current one. |
+| **clear** | Empties the macro. |
+| **slot** `0`-`9` | The file **export** and **import** use: `sd:/sloperinaGZ/macros/macro<slot>.sgm`. |
+| **export** / **import** | Write the macro to the slot's file, or read it back (replacing the macro in memory). |
+| **macro input** | While playing: **replace controller** (default; the controller is ignored) or **add to controller** (its buttons are added, and a stick the macro leaves centred is the controller's). Kept in the settings file (`macro_input`). |
+
+Notes:
+
+- With the menu open the game gets no input, so frames recorded with it open are blank. A playing macro wins over
+  the menu, so those blank frames play back the same way: you can start recording or playback from the menu and
+  close it.
+- With frame advance on, nothing is recorded or played while the game is held; each frame let through is one macro
+  frame. Record a frame at a time with frame advance, then **rewind** and **play** at full speed.
+- A macro only does the same thing again if the game starts from the same state: start playback where recording
+  started (the same spot after a warp or **load position**, the same camera and the same frame of any moving
+  things). sloperinaGZ has no savestates and doesn't control the game's random numbers, so anything random can
+  desync it.
+- Up to an hour of frames (216,000) is kept, in the game's memory; a new macro is lost when the game closes unless
+  exported.
+
 ## 3 On the screen
 
 | What | Where | Notes |
@@ -374,7 +408,7 @@ game's pause screen closed):
 Settings are saved on the SD card in `sloperinaGZ/settings.ini` (on an emulator, its virtual SD card) a couple of
 seconds after you close the menu. It's plain `key=value` text: cheats, watches (which, in what order, their types,
 names and whether shown), the watches box, menu size, background, hiding in game menus, language, input display,
-levitate and frame advance. Delete it to go back to the defaults. Your game saves are never touched.
+levitate, frame advance and macro input. Delete it to go back to the defaults. Your game saves are never touched.
 
 The game's pictures sloperinaGZ uses (the controllers in the input display, the menus' parts, the item icons)
 are kept in `sloperinaGZ/cache/` once they're made from your copy of the game, so later starts don't have to make
@@ -393,5 +427,6 @@ dropped (é shows as e) and other alphabets can't be shown yet.
 - Collision shows the air walls; the full collision mesh isn't drawn yet.
 - Memory watches aren't kept between runs.
 - Frame advance freezes the picture while paused ([4](#4-about-frame-advance)).
+- Macros have no savestates or random-number control to keep them in sync ([2.13](#213-macro)).
 - Some changes only show after the game redraws them (pause screen, loading zone); story stages need a loading
   zone.

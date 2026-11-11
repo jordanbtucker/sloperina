@@ -17,6 +17,7 @@
 #include "gameimage.h"
 #include "levitate.h"
 #include "lock.h"
+#include "macro.h"
 #include "position.h"
 #include "link.h"
 #include "menu.h"
@@ -2994,6 +2995,7 @@ static void build_root(void)
   menu_add_submenu(&menu_root, "equips", &m_equips);
   menu_add_submenu(&menu_root, "story", &m_story);
   menu_add_submenu(&menu_root, "watches", &m_watches);
+  menu_add_submenu(&menu_root, "macro", &macro_menu);
   menu_add_submenu(&menu_root, "debug", &m_debug);
   menu_add_submenu(&menu_root, "settings", &m_settings);
   menu_add_submenu(&menu_root, "log", &m_log);
@@ -3013,6 +3015,7 @@ void menus_build(void)
   build_watches();
   build_scene();
   build_settings();
+  macro_build_menu();
   build_debug();
   osk_build();
   build_log();

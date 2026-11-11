@@ -21,7 +21,7 @@ def main():
         env["PATH"] = str(Path(args.cc).parent) + os.pathsep + env.get("PATH", "")
     libm = [] if os.name == "nt" else ["-lm"]  # the C runtime has the maths functions on Windows
     commands = []
-    for test in ("levitate", "cct"):
+    for test in ("levitate", "cct", "macro"):
         exe = out / (test + (".exe" if os.name == "nt" else ""))
         commands += [
             [args.cc, "-std=gnu11", "-O2", "-Wall", "-Wextra", "-Werror",

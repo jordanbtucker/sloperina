@@ -118,6 +118,11 @@ Turn on frame advance with **settings > frame advance > enabled** (it's off to b
 to play slowly, and press **L + L3** to carry on. Buttons and stick directions you press while paused are given to
 the next frame.
 
+**...record inputs and play them back?**
+**macro > record**, close the menu and play (with frame advance for a frame at a time). Open the menu, **stop**,
+go back to where you started, then **rewind** and **play**. **export** / **import** keep it on the SD card
+(`sd:/sloperinaGZ/macros/`). A macro only matches if it starts from the same state as the recording.
+
 **...see my inputs on screen?**
 **settings > input display > show**. Choose **style: controller** for a picture of a Pro Controller.
 

@@ -8,7 +8,7 @@
 
 /* --- the item pool --------------------------------------------------------------------------- */
 
-#define POOL_ITEMS 1400
+#define POOL_ITEMS 1432
 
 static menu_item_t pool[POOL_ITEMS];
 static int pool_used;

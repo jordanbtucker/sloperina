@@ -71,6 +71,7 @@ Mirrors gz (`gz/src/gz`, `gz/lib`, the Makefile's version list):
 | `src/ootgz/nvn.c`, `font.c` | `gfx.c`, `res/` fonts | drawing over the game's picture through its NVN; gz's Press Start 2P font |
 | `src/ootgz/got.c` | | redirects main's imports (NVN, nn::hid) |
 | `src/ootgz/input.c` | `input.c` | controller input via the game's `nn::hid` |
+| `src/ootgz/macro.c` | `gz_macro.c` | macros: records the input the game gets each frame, plays it back through `input.c` |
 | `src/ootgz/gamedata.c` | (z64 save context) | GameData fields (port of `game.py`) |
 | `src/ootgz/pouch.c`, `job.c` | `gz_inventory.c` | inventory through the game's own code (port of `patch.py`) |
 | `src/ootgz/cheats.c`, `link.c` | `gz_cheats.c` | cheats; Link, camera, frame counter |

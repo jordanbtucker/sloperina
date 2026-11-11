@@ -38,6 +38,18 @@ extern bool input_force_active;
 extern uint32_t input_force_buttons;
 extern bool input_force_sticks[2];       /* left, right: use the values below */
 extern int32_t input_force_stick[4];     /* lx, ly, rx, ry */
+/* Macro playback (macro.c): while active, given to the game instead of the controller (or, with
+ * input_macro_merge, on top of it). Unlike input_force_*, it also wins over input_block_game, so a
+ * macro plays the same with the menu open as it was recorded. */
+extern bool input_macro_active;
+extern bool input_macro_merge;
+extern uint32_t input_macro_buttons;
+extern int32_t input_macro_stick[4];     /* lx, ly, rx, ry */
+/* What the game was given since the last call (after every filter above), merged over its reads:
+ * the buttons of every connected controller, each stick's last position away from the middle.
+ * Returns how many connected states the game read (0: it didn't read the controller). Macro
+ * recording takes this once per frame. */
+int      input_take_game_seen(uint32_t *buttons, int32_t stick[4]);
 /* Point main's nn::hid imports at our wrappers (module init); returns 0 or a message. */
 const char *input_hook_game(uintptr_t main_base);
 

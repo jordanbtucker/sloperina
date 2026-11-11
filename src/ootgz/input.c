@@ -170,19 +170,24 @@ uint32_t input_force_buttons;
 bool input_force_sticks[2];
 int32_t input_force_stick[4];
 
-/* Edit the states the game just read: blank them while the menu is open, otherwise add frame
- * advance's buffered input and take out the buttons the game mustn't see. */
-static void filter_game_states(void *states, int count)
+bool input_macro_active;
+bool input_macro_merge;
+uint32_t input_macro_buttons;
+int32_t input_macro_stick[4];
+
+/* what the game was given since input_take_game_seen last ran */
+static uint32_t seen_buttons;
+static int32_t seen_stick[4];
+static int seen_reads;
+
+/* One state as the game should see it: blanked while the menu is open, frame advance's buffered input
+ * added, hidden buttons taken out; then a playing macro replaces it (or adds to it, merging). */
+static void filter_state(npad_state_t *state)
 {
-  if (!input_block_game && !input_hide_from_game && !input_force_active)
-    return;
-  for (int i = 0; i < count; i++) {
-    npad_state_t *state = (npad_state_t *)((char *)states + i * NPAD_STATE_SIZE);
-    if (input_block_game) {
-      state->buttons = 0;
-      state->lx = state->ly = state->rx = state->ry = 0;
-      continue;
-    }
+  if (input_block_game) {
+    state->buttons = 0;
+    state->lx = state->ly = state->rx = state->ry = 0;
+  } else {
     if (input_force_active) {
       state->buttons |= input_force_buttons;
       if (input_force_sticks[0]) {
@@ -196,6 +201,58 @@ static void filter_game_states(void *states, int count)
     }
     state->buttons &= ~(uint64_t)input_hide_from_game;
   }
+  if (input_macro_active) {
+    const int32_t *m = input_macro_stick;
+    if (!input_macro_merge) {
+      state->buttons = input_macro_buttons;
+      state->lx = m[0], state->ly = m[1], state->rx = m[2], state->ry = m[3];
+    } else {
+      state->buttons |= input_macro_buttons;
+      if (m[0] || m[1])
+        state->lx = m[0], state->ly = m[1];
+      if (m[2] || m[3])
+        state->rx = m[2], state->ry = m[3];
+    }
+  }
+}
+
+/* Edit the states the game just read, and note what it got (input_take_game_seen). */
+static void filter_game_states(void *states, int count)
+{
+  bool filtering = input_block_game || input_hide_from_game || input_force_active || input_macro_active;
+  npad_state_t *newest = 0;
+  for (int i = 0; i < count; i++) {
+    npad_state_t *state = (npad_state_t *)((char *)states + i * NPAD_STATE_SIZE);
+    if (filtering)
+      filter_state(state);
+    /* the newest by sampling number, whichever order the states come in */
+    if (!newest || state->sampling_number > newest->sampling_number)
+      newest = state;
+  }
+  /* a macro is played to every state, connected or not: noted whatever the controller */
+  if (!newest || (!(newest->attributes & NPAD_ATTR_CONNECTED) && !input_macro_active))
+    return;
+  seen_reads++;
+  seen_buttons |= (uint32_t)newest->buttons;
+  if (newest->lx || newest->ly) {
+    seen_stick[0] = newest->lx;
+    seen_stick[1] = newest->ly;
+  }
+  if (newest->rx || newest->ry) {
+    seen_stick[2] = newest->rx;
+    seen_stick[3] = newest->ry;
+  }
+}
+
+int input_take_game_seen(uint32_t *buttons, int32_t stick[4])
+{
+  int reads = seen_reads;
+  *buttons = seen_buttons;
+  memcpy(stick, seen_stick, sizeof(seen_stick));
+  seen_reads = 0;
+  seen_buttons = 0;
+  memset(seen_stick, 0, sizeof(seen_stick));
+  return reads;
 }
 
 /* hid_wrap_N: whatever slot N held before (hid_next), then filter_game_states */

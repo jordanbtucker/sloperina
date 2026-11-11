@@ -29,6 +29,7 @@
 #include "overlayui.h"
 #include "divetest.h"
 #include "levitate.h"
+#include "macro.h"
 #include "settings.h"
 #include "warp.h"
 #include "watches.h"
@@ -313,6 +314,7 @@ static void fa_hold_game(void)
   if (game_clock_stops) /* the game's own timestamps: moved on so the last frame took 1/60 s */
     timefinder_shift((int64_t)(sys_tick() - fa_let_go_at) - (int64_t)(sys_tick_freq() / 60));
   fa_let_go_at = sys_tick();
+  macro_frame_released(); /* anything the game read while held isn't the next frame's */
 }
 
 static void fa_frame(void)
@@ -373,6 +375,7 @@ static void frame(void)
     timefinder_frame();
   sys_frame();
   input_update();
+  macro_frame(); /* before the menu: a macro started from it begins with the next frame */
 
   fa_menu_was_open = menu_current != 0; /* an L that closes the menu isn't frame advance's */
   menu_controls();
