@@ -38,6 +38,23 @@ extern bool input_force_active;
 extern uint32_t input_force_buttons;
 extern bool input_force_sticks[2];       /* left, right: use the values below */
 extern int32_t input_force_stick[4];     /* lx, ly, rx, ry */
+/* Frame advance diagnostics: the game's controller reads (main's nn::hid::GetNpadStates calls) since the
+ * last input_reads_take. Styles: 0 FullKey, 1 Handheld, 2 JoyDual, 3 JoyLeft, 4 JoyRight. Sampling
+ * numbers are the newest state's of the read just before the count started and of the last read, so
+ * their difference is how many hid samples the game moved on by. Threads by TLS address. */
+#define INPUT_READS_THREADS 4
+typedef struct {
+  uint32_t calls, forced, max_count, max_returned, first_style, styles; /* styles: a bit per style read */
+  uint64_t first_tick, last_tick;
+  bool have_sampling;
+  int64_t first_sampling, last_sampling;
+  uint32_t n_threads;
+  uintptr_t threads[INPUT_READS_THREADS];
+} input_reads_t;
+extern volatile input_reads_t input_reads;
+void input_reads_take(input_reads_t *out); /* copy and start counting again */
+uintptr_t input_thread(void);              /* the calling thread, as input_reads_t names it */
+
 /* Point main's nn::hid imports at our wrappers (module init); returns 0 or a message. */
 const char *input_hook_game(uintptr_t main_base);
 

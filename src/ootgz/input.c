@@ -198,12 +198,79 @@ static void filter_game_states(void *states, int count)
   }
 }
 
+/* Frame advance diagnostics: how, when and from which thread the game reads the controller. Written
+ * from whatever thread the game reads on, read and cleared by the frame hook; a torn count only skews
+ * one log line. */
+volatile input_reads_t input_reads;
+
+static uintptr_t current_thread(void)
+{
+  uintptr_t tls;
+  __asm__ volatile("mrs %0, tpidrro_el0" : "=r"(tls));
+  return tls;
+}
+
+static void note_game_read(unsigned style, void *states, int count, int returned)
+{
+  volatile input_reads_t *r = &input_reads;
+  uint64_t now = sys_tick();
+  if (r->calls == 0) {
+    r->first_tick = now;
+    r->first_style = style;
+  }
+  r->last_tick = now;
+  r->calls++;
+  if (input_force_active)
+    r->forced++;
+  if ((uint32_t)count > r->max_count)
+    r->max_count = (uint32_t)count;
+  r->styles |= 1u << style;
+  if (returned > 0) {
+    if ((uint32_t)returned > r->max_returned)
+      r->max_returned = (uint32_t)returned;
+    /* sampling numbers are per controller style: follow the first style read */
+    static int64_t previous_sampling[8];
+    int64_t sampling = ((npad_state_t *)states)->sampling_number;
+    if (style == r->first_style) {
+      if (!r->have_sampling) {
+        r->first_sampling = previous_sampling[style]; /* the read before this count started */
+        r->have_sampling = true;
+      }
+      r->last_sampling = sampling;
+    }
+    previous_sampling[style] = sampling;
+  }
+  uintptr_t thread = current_thread();
+  bool known = false;
+  for (uint32_t i = 0; i < r->n_threads && i < INPUT_READS_THREADS; i++)
+    if (r->threads[i] == thread)
+      known = true;
+  if (!known && r->n_threads < INPUT_READS_THREADS)
+    r->threads[r->n_threads++] = thread;
+}
+
+void input_reads_take(input_reads_t *out)
+{
+  *out = *(const input_reads_t *)&input_reads;
+  input_reads.calls = 0;
+  input_reads.forced = 0;
+  input_reads.max_count = 0;
+  input_reads.max_returned = 0;
+  input_reads.have_sampling = false;
+  input_reads.n_threads = 0;
+  input_reads.styles = 0;
+}
+
+uintptr_t input_thread(void) { return current_thread(); }
+
 /* hid_wrap_N: whatever slot N held before (hid_next), then filter_game_states */
 #define WRAP(n)                                                     \
   static int hid_wrap_##n(void *out, int count, const uint32_t *id) \
   {                                                                 \
     int result = ((hid_public_t)hid_next[n])(out, count, id);       \
-    filter_game_states(out, result < count ? result : count);       \
+    int states = result < count ? result : count;                   \
+    note_game_read(n, out, count, states);                          \
+    filter_game_states(out, states);                                \
     return result;                                                  \
   }
 WRAP(0) WRAP(1) WRAP(2) WRAP(3) WRAP(4)

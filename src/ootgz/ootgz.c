@@ -41,6 +41,8 @@
 #include "z64hd.h"
 #include "z64hd_builds.h"
 
+float hypotf(float x, float y);
+
 uintptr_t z64hd_main;
 const struct z64hd_build *z64hd_game;
 
@@ -238,10 +240,98 @@ static void fa_release_buffered_input(void)
   input_force_active = buffered_buttons || buffered_stick_moved[0] || buffered_stick_moved[1];
 }
 
+/* --- frame advance diagnostics ------------------------------------------------------------------
+ * To find where the game's frame and its controller reads fall relative to this hook, each time the
+ * game is let go (the hook returns, or a frame is let through) what it is at is noted, and at the next
+ * hook what changed is logged: the game's frame counter, presented frames, the game's controller reads
+ * (how many, when, which thread, the hid sampling numbers, whether frame advance's input was on them),
+ * and how far Link moved. Logged for every frame let through while paused, and for a few frames in a
+ * row now and then while running with frame advance on, to compare with. */
+#define FA_DIAG_RUN_EVERY 600 /* hooks between runs of logged running frames */
+#define FA_DIAG_RUN_FRAMES 6
+
+typedef enum { FA_DIAG_NONE, FA_DIAG_RUNNING, FA_DIAG_PAUSING, FA_DIAG_STEP } fa_diag_kind_t;
+
+static struct {
+  fa_diag_kind_t kind;   /* what the game was let go for */
+  uint64_t let_go_at;    /* sys_tick() */
+  uint32_t frame;        /* frame_counter() */
+  uint32_t presents;     /* gfx_presents */
+  bool have_pos;
+  vec3f_t pos;
+  uint32_t held_reads;   /* the game's controller reads while it was held (another thread's) */
+  uint32_t steps;        /* frames let through since the last pause */
+  uint32_t buttons;      /* what frame advance gave the frame let through */
+  bool sticks[2];
+} fa_diag;
+static uintptr_t fa_diag_game_thread;
+
+/* The game is let go now (`kind` says why). */
+static void fa_diag_let_go(fa_diag_kind_t kind)
+{
+  input_reads_t discard;
+  input_reads_take(&discard);
+  fa_diag.kind = kind;
+  fa_diag.let_go_at = sys_tick();
+  fa_diag.frame = frame_counter();
+  fa_diag.presents = gfx_presents;
+  fa_diag.have_pos = link_drawn_pos(&fa_diag.pos);
+  fa_diag.buttons = input_force_active ? input_force_buttons : 0;
+  fa_diag.sticks[0] = input_force_active && input_force_sticks[0];
+  fa_diag.sticks[1] = input_force_active && input_force_sticks[1];
+}
+
+/* The hook runs again: log what happened since the game was let go. */
+static void fa_diag_hook(void)
+{
+  uint64_t now = sys_tick();
+  input_reads_t reads;
+  input_reads_take(&reads);
+  fa_diag_game_thread = input_thread();
+  fa_diag_kind_t kind = fa_diag.kind;
+  fa_diag.kind = FA_DIAG_NONE;
+  if (kind == FA_DIAG_NONE)
+    return;
+  double tick_ms = (double)sys_tick_freq() / 1000.0;
+  vec3f_t pos;
+  char moved[64] = "link: ?";
+  if (fa_diag.have_pos && link_drawn_pos(&pos)) {
+    double dx = pos.x - fa_diag.pos.x, dy = pos.y - fa_diag.pos.y, dz = pos.z - fa_diag.pos.z;
+    snprintf(moved, sizeof(moved), "link moved %.4f (y %+.4f)", (double)hypotf((float)dx, (float)dz), dy);
+  }
+  char when[112] = "";
+  if (reads.calls)
+    snprintf(when, sizeof(when), " at +%.2f..+%.2f ms, styles %#x, count %u/%u, samples +%lld",
+             (double)(reads.first_tick - fa_diag.let_go_at) / tick_ms,
+             (double)(reads.last_tick - fa_diag.let_go_at) / tick_ms, (unsigned)reads.styles,
+             (unsigned)reads.max_returned, (unsigned)reads.max_count,
+             reads.have_sampling ? (long long)(reads.last_sampling - reads.first_sampling) : -1LL);
+  bool other_thread = false;
+  for (uint32_t i = 0; i < reads.n_threads && i < INPUT_READS_THREADS; i++)
+    if (reads.threads[i] != fa_diag_game_thread)
+      other_thread = true;
+  const char *what = kind == FA_DIAG_STEP ? "step" : kind == FA_DIAG_PAUSING ? "pausing" : "run";
+  char step[48] = "";
+  if (kind == FA_DIAG_STEP)
+    snprintf(step, sizeof(step), " %u gave %#x%s%s", (unsigned)fa_diag.steps, (unsigned)fa_diag.buttons,
+             fa_diag.sticks[0] ? " +ls" : "", fa_diag.sticks[1] ? " +rs" : "");
+  log_printf("fa %s%s: %.2f ms, frames +%u, presents +%u, reads %u (forced %u, %s thread%s)%s, held reads %u, %s",
+             what, step, (double)(now - fa_diag.let_go_at) / tick_ms, (unsigned)(frame_counter() - fa_diag.frame),
+             (unsigned)(gfx_presents - fa_diag.presents), (unsigned)reads.calls, (unsigned)reads.forced,
+             other_thread ? "another" : "game's", reads.n_threads > 1 ? "s" : "", when,
+             (unsigned)fa_diag.held_reads, moved);
+  fa_diag.held_reads = 0;
+}
+
 /* Holds the game's thread here while paused, running the menu and overlays, until a frame is let
  * through or the game is set running again. */
+static fa_diag_kind_t fa_diag_release; /* why fa_hold_game let the game go */
+
 static void fa_hold_game(void)
 {
+  fa_diag_release = FA_DIAG_RUNNING;
+  input_reads_t reads;
+  input_reads_take(&reads);
   uint32_t presents_at_start = gfx_presents;
   uint64_t paused_at = sys_tick();
   bool logged = false;
@@ -284,6 +374,7 @@ static void fa_hold_game(void)
     }
     if (event == FA_TAP || event == FA_REPEAT) { /* one frame, with what was pressed meanwhile */
       fa_release_buffered_input();
+      fa_diag_release = FA_DIAG_STEP;
       break;
     }
     fa_buffer_input();
@@ -303,6 +394,10 @@ static void fa_hold_game(void)
                  (unsigned)(gfx_presents - presents_at_start));
     }
   }
+  input_reads_take(&reads);
+  fa_diag.held_reads = reads.calls;
+  if (fa_diag_release == FA_DIAG_STEP)
+    fa_diag.steps++;
 }
 
 static void fa_frame(void)
@@ -332,10 +427,18 @@ static void fa_frame(void)
     /* The game shows nothing new while it's held, so this frame is let through first, with the pause
      * icon on it: the screen shows the game is paused (and hasn't crashed). Held from the next one. */
     gfx_pause_icon = pause_display ? 1 : 0;
+    fa_diag.steps = 0;
+    fa_diag_let_go(FA_DIAG_PAUSING);
     return;
   }
-  if (fa_paused)
+  if (fa_paused) {
     fa_hold_game();
+    fa_diag_let_go(fa_diag_release);
+    return;
+  }
+  /* now and then, a few running frames to compare the steps with */
+  if (frames_run % FA_DIAG_RUN_EVERY < FA_DIAG_RUN_FRAMES)
+    fa_diag_let_go(FA_DIAG_RUNNING);
 }
 
 /* --- frame hook -------------------------------------------------------------------------- */
@@ -358,6 +461,7 @@ static void frame(void)
     first_frame();
   }
   frames_run++;
+  fa_diag_hook();
   sys_frame();
   input_update();
 
