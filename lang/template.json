@@ -312,6 +312,8 @@
     "frame advance stops the clock": "",
     "frame advance: L a frame, L + L3 to run": "",
     "frame advance: R a frame, R + L3 to run": "",
+    "frame advance: game clock found": "",
+    "frame advance: looking for the game clock": "",
     "frame advance: running": "",
     "frame hook installed": "",
     "frame site not patched (another mod on the same site, e.g. ootmenu?)": "",

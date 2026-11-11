@@ -316,7 +316,7 @@ pause behavior have not been separately fixed.
 |---|---|
 | **enabled** | Turns frame advance on ([4](#4-about-frame-advance)). Off by default; updating from 0.0.3 or older turns it off once. |
 | **in pause screen** | Off (the default): while the game's pause screen or an item menu is open, the button is the game's and doesn't start frame advance. On: it starts frame advance there too. |
-| **stop the clock** | On (the default; experimental): about 15 s after the game starts, sloperinaGZ looks through the game's memory for the timestamps it times its frames by, then moves them on each time a frame is let through, so to the game every frame let through took 1/60 s, however long it was held. Off: a frame let through after a pause plays several frames' worth of movement. |
+| **stop the clock** | On (the default; experimental): about 15 s after the game starts with frame advance on (notice: *looking for the game clock*), sloperinaGZ looks through the game's memory for the timestamps it times its frames by, then moves them on each time a frame is let through, so to the game every frame let through took 1/60 s, however long it was held. The notice *game clock found* says when it's ready (play in real time until then: it can take a minute, and looks again if it finds nothing). Off: a frame let through after a pause plays several frames' worth of movement. |
 | **pause icon** | gz's pause icon at the top left while paused. |
 | **button** | **L** or **R**. The game doesn't see that button while frame advance is on. |
 

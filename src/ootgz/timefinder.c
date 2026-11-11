@@ -1,5 +1,6 @@
 #include "timefinder.h"
 
+#include "gfx.h"
 #include "sys.h"
 
 #define MEM_TYPE_MASK       0xFF
@@ -9,7 +10,7 @@
 
 #define START_AFTER_FRAMES  900              /* let the game settle first */
 #define SCAN_BUDGET         (24u << 20)      /* bytes read a frame */
-#define WINDOW_MS           50               /* "now": within the last this many ms */
+#define WINDOW_MS           150              /* "now": within the last this many ms */
 #define MAX_HITS            1024
 #define STALE_CHECKS        4                /* a hit that hasn't changed in this many frames is dropped */
 #define CHECK_FRAMES        40               /* frames each hit is followed for */
@@ -133,18 +134,24 @@ static void scan_slice(void)
   }
 }
 
-/* each frame: which hits moved on by about a frame (8 to 40 ms; a frame can run long) */
+/* each frame: which hits moved on by about as much as the time since the last frame (frames run long when
+ * the emulator is slow: 30 to 110 ms measured) */
+static uint64_t last_check_tick;
 static void check_hits(void)
 {
-  bool held = held_since_check;
+  bool held = held_since_check || last_check_tick == 0;
   held_since_check = false;
+  uint64_t now = sys_tick();
+  double frame_ms = (double)(now - last_check_tick) / ticks_per_ms();
+  last_check_tick = now;
+  double slack = frame_ms * 0.3 > 4.0 ? frame_ms * 0.3 : 4.0;
   for (int i = 0; i < n_hits; i++) {
     hit_t *h = &hits[i];
     if (!sys_mapped(h->addr, 8, SYS_PERM_R))
       continue;
     uint64_t v = *(const volatile uint64_t *)h->addr;
     double moved = value_ms(h->domain, v) - value_ms(h->domain, h->last);
-    if (!held && moved >= 8.0 && moved <= 40.0)
+    if (!held && moved >= frame_ms - slack && moved <= frame_ms + slack)
       h->framely++;
     h->last = v;
   }
@@ -175,6 +182,7 @@ static void check_hits(void)
     }
   if (n_found > 0) {
     state = DONE;
+    gfx_notice("frame advance: game clock found");
     return;
   }
   /* nothing found: look again a little later */
@@ -184,6 +192,7 @@ static void check_hits(void)
   for (int d = 0; d < D_COUNT; d++)
     hits_seen[d] = 0;
   checked_frames = 0;
+  last_check_tick = 0;
   frames = START_AFTER_FRAMES - RETRY_AFTER_FRAMES;
   state = IDLE;
 }
@@ -213,6 +222,7 @@ void timefinder_frame(void)
       scan_pos = 0;
       state = SCANNING;
       log_printf("time finder: scanning"); /* not menu text */
+      gfx_notice("frame advance: looking for the game clock");
       return;
     case SCANNING:
       drop_stale();

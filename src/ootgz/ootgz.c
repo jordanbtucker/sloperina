@@ -544,7 +544,8 @@ static void frame(void)
   frames_run++;
   fa_diag_hook();
   timeprobe_frame();
-  timefinder_frame();
+  if (frame_advance && game_clock_stops) /* the scan costs time: only when it will be used */
+    timefinder_frame();
   sys_frame();
   input_update();
 
