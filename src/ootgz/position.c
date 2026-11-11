@@ -23,7 +23,8 @@
 #include "lock.h"
 #include "sys.h"
 
-#define LOAD_COMBO (BTN_R | BTN_DDOWN) /* the old load shortcut: a load waits for it to be let go (unchanged) */
+#define SAVE_COMBO (BTN_LSTICK | BTN_X) /* L3 + X */
+#define LOAD_COMBO (BTN_LSTICK | BTN_B) /* L3 + B; a load waits for it to be let go */
 #define SETTLE 20       /* frames for a load to show: checked each frame, then given up */
 #define MAX_WRITES 4    /* written again every RETRY_EVERY frames until Link is there */
 #define RETRY_EVERY 3
@@ -152,7 +153,14 @@ static void settle_step(void)
 
 void position_frame(bool menu_open)
 {
-  (void)menu_open;
+  /* While L3 is held the game doesn't get X or B, so L3 + X / L3 + B don't also press them in the game. */
+  if (input_held() & BTN_LSTICK)
+    input_hide_from_game |= BTN_X | BTN_B;
+  if (!menu_open && input_combo(SAVE_COMBO))
+    position_save();
+  else if (!menu_open && input_combo(LOAD_COMBO))
+    position_load();
+
   link_record_status_t st = link_record_status();
   if (finding && st == REC_READY) {
     finding = false;
