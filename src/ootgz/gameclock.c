@@ -65,6 +65,11 @@ void game_clock_release(void)
   released_game_time = real_tick() - offset;
 }
 
+bool game_clock_held(void)
+{
+  return __atomic_load_n(&held, __ATOMIC_ACQUIRE);
+}
+
 uint32_t game_clock_reads_take(void)
 {
   return __atomic_exchange_n(&reads, 0, __ATOMIC_RELAXED);

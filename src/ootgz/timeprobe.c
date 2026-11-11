@@ -1,5 +1,6 @@
 #include "timeprobe.h"
 
+#include "gameclock.h"
 #include "got.h"
 #include "sys.h"
 #include "z64hd.h"
@@ -65,11 +66,68 @@ static void w_sleep(int64_t ns)
   ((void (*)(int64_t))p->next)(ns);
 }
 
+/* The display's refresh (vsync) event, as far as can be told from outside: the system event main waits on
+ * most, with waits that block for a while (a refresh is 16.7 ms apart). The game seems to count refreshes
+ * to time its frames (a step of frame advance played 3-4 frames of physics), so while frame advance holds
+ * the game (with "stop the clock" on), whoever waits on it is held too, and the refreshes that came
+ * meanwhile are dropped: a frame let through then sees one refresh. */
+#define WAIT_OBJECTS 8
+static struct { volatile uintptr_t object; volatile uint32_t count; volatile uint64_t ticks; } waits[WAIT_OBJECTS];
+static volatile uintptr_t vsync_event;
+static volatile uint32_t vsync_held; /* waits held back, for the log */
+
+static void note_wait(void *event, uint64_t ticks)
+{
+  for (int i = 0; i < WAIT_OBJECTS; i++) {
+    uintptr_t object = waits[i].object;
+    if (object == (uintptr_t)event || (!object && __atomic_compare_exchange_n(&waits[i].object, &object,
+                                                                             (uintptr_t)event, false,
+                                                                             __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))) {
+      __atomic_add_fetch(&waits[i].count, 1, __ATOMIC_RELAXED);
+      __atomic_add_fetch(&waits[i].ticks, ticks, __ATOMIC_RELAXED);
+      return;
+    }
+    if (object == (uintptr_t)event)
+      return;
+  }
+}
+
 static void w_wait_sys(void *event)
 {
   probe_t *p = &probes[P_WAIT_SYS];
   note(p, 0, event);
+  if (vsync_event && (uintptr_t)event == vsync_event && game_clock_held()) {
+    __atomic_add_fetch(&vsync_held, 1, __ATOMIC_RELAXED);
+    while (game_clock_held())
+      sys_sleep_ns(500 * 1000);
+    if (probes[P_TRYWAIT_SYS].next) /* the refresh signalled while held: not the frame let through's */
+      ((bool (*)(void *))probes[P_TRYWAIT_SYS].next)(event);
+  }
+  uint64_t start = sys_tick();
   ((void (*)(void *))p->next)(event);
+  note_wait(event, sys_tick() - start);
+}
+
+/* After a few seconds of waits, take the most waited-on event whose waits block (2 ms or more on average)
+ * as the refresh event. */
+static void pick_vsync_event(void)
+{
+  int best = -1;
+  for (int i = 0; i < WAIT_OBJECTS; i++) {
+    uint32_t count = waits[i].count;
+    if (!waits[i].object || count < 60)
+      continue;
+    double average_ms = (double)waits[i].ticks * 1000.0 / (double)sys_tick_freq() / count;
+    log_printf("time probe: system event @%llx waited %u times, %.2f ms on average", /* not menu text */
+               (unsigned long long)(waits[i].object & 0xFFFFFF), (unsigned)count, average_ms);
+    if (average_ms >= 2.0 && (best < 0 || count > waits[best].count))
+      best = i;
+  }
+  if (best >= 0) {
+    vsync_event = waits[best].object;
+    log_printf("time probe: taking @%llx as the refresh event", /* not menu text */
+               (unsigned long long)(vsync_event & 0xFFFFFF));
+  }
 }
 
 static bool w_trywait_sys(void *event)
@@ -111,6 +169,9 @@ static void w_wait_light(void *event)
 
 void timeprobe_frame(void)
 {
+  static uint32_t frames;
+  if (++frames == 600 && probes[P_WAIT_SYS].hooked)
+    pick_vsync_event();
   static uint32_t tries;
   if (tries > 3600)
     return;
@@ -134,6 +195,9 @@ void timeprobe_take(char *buf, int len)
 {
   int n = 0;
   buf[0] = 0;
+  uint32_t held = __atomic_exchange_n(&vsync_held, 0, __ATOMIC_RELAXED);
+  if (held)
+    n += snprintf(buf, len, " vsync waits held %u", (unsigned)held); /* not menu text */
   for (int i = 0; i < P_COUNT; i++) { /* every probe is cleared, whatever fits in buf */
     probe_t *p = &probes[i];
     if (!p->hooked)
