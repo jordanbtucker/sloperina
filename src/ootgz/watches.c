@@ -824,27 +824,6 @@ void watch_set_label(int index, const char *label)
 
 /* --- frame --------------------------------------------------------------------------------------- */
 
-/* gz's commands, while the menu is closed; the three-button ones first */
-static void command_input(void)
-{
-  uint32_t held = input_held();
-  if (input_combo(BTN_R | BTN_A | BTN_DLEFT)) {
-    timer_toggle();
-    gfx_notice("timer started/stopped");
-  } else if (input_combo(BTN_R | BTN_B | BTN_DLEFT)) {
-    timer_reset();
-    gfx_notice("timer reset");
-  } else if (input_combo(BTN_R | BTN_B | BTN_DRIGHT)) {
-    lag_reset();
-    gfx_notice("lag counter reset");
-  } else if (input_combo(BTN_R | BTN_A | BTN_DRIGHT)) {
-    gfx_notice(js_height_reset() ? "JS Height reset" : "JS Height: Link not found");
-  } else if (input_combo(BTN_R | BTN_DRIGHT) && !(held & (BTN_A | BTN_B))) {
-    watches_shown = !watches_shown;
-    gfx_notice(watches_shown ? "watches shown" : "watches hidden");
-  }
-}
-
 void watches_frame(bool menu_open)
 {
   /* A frame-level freeze, not a patch of the game's threshold setter. Keep it independent
@@ -862,8 +841,6 @@ void watches_frame(bool menu_open)
     lag_start_frame = frame_counter();
     lag_started = true;
   }
-  if (!menu_open)
-    command_input();
   bool shown = moving_watches || (placing && watches_shown);
   if ((menu_open && !shown) || (!watches_shown && !shown))
     return;

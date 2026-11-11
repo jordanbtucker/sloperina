@@ -23,8 +23,7 @@
 #include "lock.h"
 #include "sys.h"
 
-#define SAVE_COMBO (BTN_R | BTN_DUP)
-#define LOAD_COMBO (BTN_R | BTN_DDOWN)
+#define LOAD_COMBO (BTN_R | BTN_DDOWN) /* the old load shortcut: a load waits for it to be let go (unchanged) */
 #define SETTLE 20       /* frames for a load to show: checked each frame, then given up */
 #define MAX_WRITES 4    /* written again every RETRY_EVERY frames until Link is there */
 #define RETRY_EVERY 3
@@ -153,11 +152,7 @@ static void settle_step(void)
 
 void position_frame(bool menu_open)
 {
-  if (!menu_open && input_combo(SAVE_COMBO))
-    position_save();
-  else if (!menu_open && input_combo(LOAD_COMBO))
-    position_load();
-
+  (void)menu_open;
   link_record_status_t st = link_record_status();
   if (finding && st == REC_READY) {
     finding = false;

@@ -229,8 +229,6 @@ void menu_back(void)
 
 /* --- changing and activating items ----------------------------------------------------------- */
 
-#define NUMBER_BIG_STEP 10 /* d-left/right with L held */
-
 /* gz's log: what a switch or checkbox is now, or the action taken (unless it logged something itself) */
 static void log_item(menu_item_t *item, uint32_t log_count_before)
 {
@@ -287,7 +285,7 @@ static int32_t stepped_number(int32_t value, int step, int32_t min, int32_t max,
   return value;
 }
 
-/* d-left/right on an item (direction -1/+1, or +-NUMBER_BIG_STEP on a number) */
+/* d-left/right on an item (direction -1/+1) */
 static void change_value(menu_item_t *item, int direction)
 {
   if (item->kind == MI_ACTION && item->on_change) {
@@ -358,32 +356,6 @@ static void activate(menu_item_t *item)
 
 /* --- input ----------------------------------------------------------------------------------- */
 
-/* Numbers: L held makes d-left/right go by NUMBER_BIG_STEP, so their own L (fill) happens when L is
- * let go, and only if the d-pad wasn't used meanwhile. */
-static bool l_down_on_number, l_used_for_big_steps;
-
-/* L and d-left/right on a number; true if they used this frame's input */
-static bool number_input(menu_item_t *item)
-{
-  bool l_held = (input_held() & BTN_L) != 0;
-  if (input_pressed() & BTN_L) {
-    l_down_on_number = true;
-    l_used_for_big_steps = false;
-  }
-  if (l_held && (input_repeat(BTN_DLEFT) || input_repeat(BTN_DRIGHT))) {
-    l_used_for_big_steps = true;
-    change(item, input_repeat(BTN_DLEFT) ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
-    return true;
-  }
-  if (!l_held && l_down_on_number) {
-    l_down_on_number = false;
-    if (!l_used_for_big_steps)
-      activate(item);
-    return true;
-  }
-  return (input_pressed() & BTN_L) != 0; /* just pressed: wait for it to be let go */
-}
-
 /* a page of text: the page moves, the cursor stays on return (menu_draw keeps the scroll in range) */
 static void scroll_text_input(menu_t *menu, menu_item_t *item)
 {
@@ -391,7 +363,7 @@ static void scroll_text_input(menu_t *menu, menu_item_t *item)
     menu->scroll--;
   else if (input_repeat(BTN_DDOWN))
     menu->scroll++;
-  else if (input_pressed() & BTN_L)
+  else if (input_pressed() & BTN_A)
     activate(item);
 }
 
@@ -410,12 +382,6 @@ void menu_input(void)
     scroll_text_input(menu, item);
     return;
   }
-  if (item->kind == MI_NUMBER) {
-    if (number_input(item))
-      return;
-  } else {
-    l_down_on_number = false;
-  }
   bool has_parts = item->n_parts > 1;
   if (input_repeat(BTN_DUP)) {
     if (!item->on_move || !item->on_move(item, -1))
@@ -431,9 +397,9 @@ void menu_input(void)
     change(item, -1);
   } else if (input_repeat(BTN_DRIGHT)) {
     change(item, 1);
-  } else if (item->press && ((input_pressed() & BTN_L) || (item->press_repeat && input_repeat(BTN_L)))) {
+  } else if (item->press && ((input_pressed() & BTN_A) || (item->press_repeat && input_repeat(BTN_A)))) {
     item->press(item, item->part < item->n_parts ? item->part : 0);
-  } else if (input_pressed() & BTN_L) {
+  } else if ((input_pressed() & BTN_A) && item->kind != MI_NUMBER) { /* numbers: d-left/right only */
     activate(item);
   }
 }

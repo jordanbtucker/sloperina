@@ -52,9 +52,8 @@ typedef uint64_t (*gd_unlock_t)(void *lock);
 static bool started;
 static uint32_t frames_run;
 
-#define MENU_COMBO (BTN_R | BTN_RS_DOWN) /* gz: R + C-down */
-#define BACK_COMBO (BTN_R | BTN_DLEFT)   /* up one level; closes at the top */
-#define BACK_BUTTON BTN_B
+#define MENU_COMBO (BTN_LSTICK | BTN_RSTICK) /* L3 + R3: open / close */
+#define BACK_BUTTON BTN_B                   /* up one level; closes at the top */
 
 /* --- frame advance ---------------------------------------------------------------------------
  * With it on (settings > frame advance), a tap of its button (L or R, menu closed) pauses the game:
@@ -184,7 +183,7 @@ static bool menu_controls(void)
     menu_open(&menu_root);
   else if (menu_current && input_combo(MENU_COMBO))
     menu_close(); /* the open combo toggles it */
-  else if (menu_current && (input_combo(BACK_COMBO) || (input_pressed() & BACK_BUTTON)))
+  else if (menu_current && (input_pressed() & BACK_BUTTON))
     menu_back();
   else if (menu_current) {
     watches_sync();
