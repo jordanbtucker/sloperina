@@ -251,6 +251,7 @@ static void fa_release_buffered_input(void)
  * row now and then while running with frame advance on, to compare with. */
 #define FA_DIAG_RUN_EVERY 600 /* hooks between runs of logged running frames */
 #define FA_DIAG_RUN_FRAMES 6
+#define FA_DIAG_PRESS_FRAMES 12 /* running frames logged after a button press */
 
 typedef enum { FA_DIAG_NONE, FA_DIAG_RUNNING, FA_DIAG_PAUSING, FA_DIAG_STEP } fa_diag_kind_t;
 
@@ -264,6 +265,7 @@ static struct {
   uint32_t held_reads;   /* the game's controller reads while it was held (another thread's) */
   uint32_t steps;        /* frames let through since the last pause */
   uint32_t buttons;      /* what frame advance gave the frame let through */
+  uint32_t held;         /* the controller then */
   bool sticks[2];
 } fa_diag;
 static uintptr_t fa_diag_game_thread;
@@ -280,6 +282,7 @@ static void fa_diag_let_go(fa_diag_kind_t kind)
   fa_diag.presents = gfx_presents;
   fa_diag.have_pos = link_drawn_pos(&fa_diag.pos);
   fa_diag.buttons = input_force_active ? input_force_buttons : 0;
+  fa_diag.held = input_held() & BUTTON_BITS;
   fa_diag.sticks[0] = input_force_active && input_force_sticks[0];
   fa_diag.sticks[1] = input_force_active && input_force_sticks[1];
 }
@@ -319,6 +322,8 @@ static void fa_diag_hook(void)
   if (kind == FA_DIAG_STEP)
     snprintf(step, sizeof(step), " %u gave %#x%s%s", (unsigned)fa_diag.steps, (unsigned)fa_diag.buttons, /* not menu text */
              fa_diag.sticks[0] ? " +ls" : "", fa_diag.sticks[1] ? " +rs" : ""); /* not menu text */
+  else
+    snprintf(step, sizeof(step), " held %#x", (unsigned)fa_diag.held); /* not menu text */
   log_printf("fa %s%s: %.2f ms, frames +%u, presents +%u, clock %u%s, reads %u (forced %u, %s thread%s)%s, held reads %u, %s",
              what, step, (double)(now - fa_diag.let_go_at) / tick_ms, (unsigned)(frame_counter() - fa_diag.frame),
              (unsigned)(gfx_presents - fa_diag.presents), (unsigned)clock_reads, game_clock_stops ? " (stopping)" : "", /* not menu text */
@@ -407,6 +412,18 @@ static void fa_hold_game(void)
     fa_diag.steps++;
 }
 
+/* Frame advance diagnostics: running frames to compare the steps with, a few now and then, and the frames
+ * after a button for the game is pressed (how many gameplay frames the game plays in real time before, say,
+ * the quick-swap menu's pause takes hold). */
+static void fa_diag_running(void)
+{
+  static uint32_t log_until;
+  if (input_pressed() & ~fa_button_bit() & BUTTON_BITS)
+    log_until = frames_run + FA_DIAG_PRESS_FRAMES;
+  if (frames_run % FA_DIAG_RUN_EVERY < FA_DIAG_RUN_FRAMES || frames_run < log_until)
+    fa_diag_let_go(FA_DIAG_RUNNING);
+}
+
 static void fa_frame(void)
 {
   if (!frame_advance) {
@@ -422,6 +439,7 @@ static void fa_frame(void)
     fa_button_down = false;
     fa_blocked_after_menu = true;
     fa_menu_closed_at = sys_tick();
+    fa_diag_running();
     return;
   }
   input_hide_from_game |= fa_button_bit();
@@ -443,9 +461,7 @@ static void fa_frame(void)
     fa_diag_let_go(fa_diag_release);
     return;
   }
-  /* now and then, a few running frames to compare the steps with */
-  if (frames_run % FA_DIAG_RUN_EVERY < FA_DIAG_RUN_FRAMES)
-    fa_diag_let_go(FA_DIAG_RUNNING);
+  fa_diag_running();
 }
 
 /* --- frame hook -------------------------------------------------------------------------- */
