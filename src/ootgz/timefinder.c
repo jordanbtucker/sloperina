@@ -13,6 +13,7 @@
 #define MAX_HITS            1024
 #define STALE_CHECKS        4                /* a hit that hasn't changed in this many frames is dropped */
 #define CHECK_FRAMES        40               /* frames each hit is followed for */
+#define RETRY_AFTER_FRAMES  300              /* after finding nothing, look again this much later */
 #define MAX_FOUND           16
 
 typedef enum { D_TICKS, D_NS, D_US, D_SECONDS, D_COUNT } domain_t;
@@ -54,6 +55,7 @@ static void drop_stale(void)
 static uint32_t checked_frames;
 static hit_t found[MAX_FOUND];
 static int n_found;
+static bool held_since_check; /* frame advance held the game since the last check: that frame's move isn't one */
 static uintptr_t own_lo, own_hi; /* this module's own data: it keeps timestamps too */
 
 static double ticks_per_ms(void) { return (double)sys_tick_freq() / 1000.0; }
@@ -134,16 +136,20 @@ static void scan_slice(void)
 /* each frame: which hits moved on by about a frame (8 to 40 ms; a frame can run long) */
 static void check_hits(void)
 {
+  bool held = held_since_check;
+  held_since_check = false;
   for (int i = 0; i < n_hits; i++) {
     hit_t *h = &hits[i];
     if (!sys_mapped(h->addr, 8, SYS_PERM_R))
       continue;
     uint64_t v = *(const volatile uint64_t *)h->addr;
     double moved = value_ms(h->domain, v) - value_ms(h->domain, h->last);
-    if (moved >= 8.0 && moved <= 40.0)
+    if (!held && moved >= 8.0 && moved <= 40.0)
       h->framely++;
     h->last = v;
   }
+  if (held) /* only frames played in real time count */
+    return;
   if (++checked_frames < CHECK_FRAMES)
     return;
   for (int i = 0; i < n_hits && n_found < MAX_FOUND; i++)
@@ -167,7 +173,24 @@ static void check_hits(void)
                  (unsigned)hits[i].framely, (unsigned)CHECK_FRAMES);
       shown++;
     }
-  state = DONE;
+  if (n_found > 0) {
+    state = DONE;
+    return;
+  }
+  /* nothing found: look again a little later */
+  log_printf("time finder: looking again"); /* not menu text */
+  n_hits = 0;
+  hits_dropped = 0;
+  for (int d = 0; d < D_COUNT; d++)
+    hits_seen[d] = 0;
+  checked_frames = 0;
+  frames = START_AFTER_FRAMES - RETRY_AFTER_FRAMES;
+  state = IDLE;
+}
+
+void timefinder_held(void)
+{
+  held_since_check = true;
 }
 
 void timefinder_frame(void)

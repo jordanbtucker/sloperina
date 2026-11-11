@@ -18,6 +18,8 @@ void timefinder_frame(void);
 /* Moves what was found on by `ticks` (timer ticks; negative moves it back), so the game's next frame
  * time is that much shorter. */
 void timefinder_shift(int64_t ticks);
+/* Frame advance held the game this frame: the next frame's move isn't a frame's. */
+void timefinder_held(void);
 /* How far the found values moved since the last call, as text for the log ("" if none found yet). */
 void timefinder_take(char *buf, int len);
 

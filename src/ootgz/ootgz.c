@@ -424,6 +424,7 @@ static void fa_hold_game(void)
     }
   }
   game_clock_release();
+  timefinder_held();
   if (game_clock_stops) /* the game's own timestamps: moved on so the last frame took 1/60 s */
     timefinder_shift((int64_t)(sys_tick() - fa_let_go_at) - (int64_t)(sys_tick_freq() / 60));
   fa_let_go_at = sys_tick();
