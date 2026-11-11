@@ -121,8 +121,8 @@ the next frame.
 **...record inputs and play them back?**
 **R + Y + D-pad up** starts recording (also while frame advance has the game paused, where the menu can't be
 seen); step with frame advance or play normally, then **R + Y + D-pad up** again stops. **R + Y + D-pad down**
-plays it from the start. The same is in **macro > record** / **play**. Open the menu, **stop**,
-go back to where you started, then **rewind** and **play**. **export** / **import** keep it on the SD card
+plays it from the start (go back to where the recording started first). The same is in **macro > record** /
+**stop** / **play**. **export** / **import** keep it on the SD card
 (`sd:/sloperinaGZ/macros/`). A macro only matches if it starts from the same state as the recording.
 
 **...repeat part of a macro forever?**
