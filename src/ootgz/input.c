@@ -129,9 +129,11 @@ bool input_combo(uint32_t mask)
   return (buttons_held & mask) == mask && (buttons_pressed & mask);
 }
 
+bool input_slow_play;
+
 bool input_shortcut(bool with_r, uint32_t button)
 {
-  if (!(buttons_held & BTN_L) || ((buttons_held & BTN_R) != 0) != with_r)
+  if (input_slow_play || !(buttons_held & BTN_L) || ((buttons_held & BTN_R) != 0) != with_r)
     return false;
   return (buttons_held & button) == button && (buttons_pressed & button);
 }
@@ -178,11 +180,11 @@ bool input_force_sticks[2];
 int32_t input_force_stick[4];
 
 /* Edit the states the game just read: blank them while the menu is open, otherwise add frame
- * advance's buffered input and take out the buttons the game mustn't see. */
+ * advance's buffered input and take out the buttons the game mustn't see (L and, while it's held, the
+ * rest: see input_slow_play). */
 static void filter_game_states(void *states, int count)
 {
-  if (!input_block_game && !input_hide_from_game && !input_force_active)
-    return;
+  /* no early return: L is checked on every read, so it's hidden from the frame it goes down */
   for (int i = 0; i < count; i++) {
     npad_state_t *state = (npad_state_t *)((char *)states + i * NPAD_STATE_SIZE);
     if (input_block_game) {
@@ -202,6 +204,8 @@ static void filter_game_states(void *states, int count)
       }
     }
     state->buttons &= ~(uint64_t)input_hide_from_game;
+    if (state->buttons & BTN_L) /* the shortcuts' button: nothing with it (but the other buttons in slow play) */
+      state->buttons &= ~(uint64_t)(input_slow_play ? BTN_L : 0xFFFF);
   }
 }
 

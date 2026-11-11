@@ -85,11 +85,10 @@ static bool hud_hidden(void)
  * go. The wait leaves room for a tap that's a little long. */
 #define FA_HOLD_MS 400
 #define FA_REPEAT_MS 66
+#define BUTTON_BITS 0xFFFF /* the buttons, not the stick-direction bits above them */
 #define FA_STEP_BUTTON BTN_L      /* L: a frame (held: slow play) */
 #define FA_TOGGLE_BUTTON BTN_LSTICK /* L + L3: pause / run */
-/* With L, these make a shortcut that works while paused (L + Plus, L + D-right, L + R + the d-pad,
- * L + L3), so L isn't a tap; anything else can be held meanwhile, for the frame let through */
-#define FA_SHORTCUT_KEYS (BTN_PLUS | BTN_R | BTN_LSTICK | BTN_DUP | BTN_DDOWN | BTN_DLEFT | BTN_DRIGHT)
+
 
 /* While paused, how long to sleep between polls of the controller (about one 60 Hz frame). */
 #define FA_POLL_NS (16 * 1000 * 1000)
@@ -109,7 +108,17 @@ typedef enum {
   FA_REPEAT = 3, /* L held while paused: another frame */
 } fa_event_t;
 
+static fa_event_t fa_read_button_now(void);
+
+/* What L did, keeping input.c told whether it's slow play (the game gets the buttons then) */
 static fa_event_t fa_read_button(void)
+{
+  fa_event_t event = fa_read_button_now();
+  input_slow_play = fa_repeating;
+  return event;
+}
+
+static fa_event_t fa_read_button_now(void)
 {
   uint32_t pressed = input_pressed();
   uint32_t held = input_held();
@@ -130,14 +139,14 @@ static fa_event_t fa_read_button(void)
   }
   if (pressed & FA_STEP_BUTTON) {
     fa_button_down = true;
-    fa_not_a_tap = (held & FA_SHORTCUT_KEYS) != 0;
+    fa_not_a_tap = false; /* what's held already is for the game: only what's pressed after L counts */
     fa_button_down_at = now;
     fa_repeating = false;
   }
   if (!fa_button_down)
     return FA_NOTHING;
-  if (pressed & FA_SHORTCUT_KEYS)
-    fa_not_a_tap = true;
+  if ((pressed & ~FA_STEP_BUTTON & BUTTON_BITS) && !fa_repeating)
+    fa_not_a_tap = true; /* pressed after L: a shortcut (L + Plus...), not a tap */
 
   if (!(held & FA_STEP_BUTTON)) {
     bool tap = !fa_not_a_tap && !fa_repeating; /* a hold already advanced: no extra frame */
@@ -178,7 +187,6 @@ static bool menu_controls(void)
  * every button pressed (nothing while L is held), and each stick's last direction away
  * from the middle. */
 #define FA_DEADZONE 6000
-#define BUTTON_BITS 0xFFFF /* the buttons, not the stick-direction bits above them */
 
 static uint32_t buffered_buttons;
 static bool buffered_stick_moved[2];   /* left, right */
@@ -242,6 +250,7 @@ static void fa_hold_game(void)
         menu_close();
       fa_button_down = false;
       fa_repeating = false;
+      input_slow_play = false;
       fa_paused = false;
       gfx_pause_icon = 0;
       gfx_notice("frame advance: running");
@@ -275,6 +284,7 @@ static void fa_hold_game(void)
 static void fa_frame(void)
 {
   if (!frame_advance) {
+    input_slow_play = false;
     fa_paused = false;
     fa_button_down = false;
     gfx_pause_icon = 0;
@@ -335,10 +345,6 @@ static void frame(void)
   menus_research_frame();
   watches_frame(menu_current != 0);
   levitate_frame(menu_current != 0); /* sets input_hide_from_game afresh: what's added to it comes after */
-  /* L is the shortcuts' button: while it's held the game gets no buttons (L included), except during
-   * frame advance's slow play (L held while paused), where the game reads the controller (fa_frame hides L) */
-  if ((input_held() & BTN_L) && !fa_repeating)
-    input_hide_from_game |= BUTTON_BITS;
   position_frame(menu_current != 0);
   divetest_frame(menu_current != 0);
   lock_frame();
