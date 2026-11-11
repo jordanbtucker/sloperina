@@ -5,11 +5,10 @@
 
 #define MEM_TYPE_MASK       0xFF
 #define MEM_TYPE_CODE_DATA  0x04 /* a module's .data / .bss */
-#define MEM_TYPE_NORMAL     0x05 /* the heap */
 #define MEM_ATTR_LOCKED     1
 
 #define START_AFTER_FRAMES  900              /* let the game settle first */
-#define SCAN_BUDGET         (24u << 20)      /* bytes read a frame */
+#define SCAN_BUDGET         (8u << 20)       /* bytes read a frame */
 #define WINDOW_MS           150              /* "now": within the last this many ms */
 #define MAX_HITS            1024
 #define STALE_CHECKS        4                /* a hit that hasn't changed in this many frames is dropped */
@@ -107,7 +106,10 @@ static void scan_slice(void)
     }
     uintptr_t end = (uintptr_t)(info.addr + info.size);
     uint32_t type = info.type & MEM_TYPE_MASK;
-    if ((type != MEM_TYPE_CODE_DATA && type != MEM_TYPE_NORMAL) || (info.perm & 3) != 3 ||
+    /* Only the modules' own data (.data/.bss): reading the heap (the GPU's memory among it) leaves Eden at
+     * a third of its frame rate for good (measured: 60 fps to under 25 after a heap scan, even with the
+     * search off again). Two of the game's frame timestamps are in main's data (found each run). */
+    if (type != MEM_TYPE_CODE_DATA || (info.perm & 3) != 3 ||
         (info.attr & MEM_ATTR_LOCKED)) {
       scan_pos = end;
       continue;

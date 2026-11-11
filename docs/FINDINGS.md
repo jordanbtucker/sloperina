@@ -734,6 +734,8 @@ From the `fa step` / `fa run` diagnostic lines (one step = one frame let through
   frame. Moving those on by the held time made held-L steps play 1/60 s each (a jump rose in 19 steps, the
   height change shrinking 0.0045 a step, as in real time at 60 fps), and slow taps play their own run time
   (14-29 ms). Frame advance now moves them so every frame let through took 1/60 s (timefinder.c).
+  Searching the heap for them left Eden under 25 fps for good (60 before, even with the search turned off
+  again), so only the modules' data is searched; 2 of the 8 are there (main's data, same offsets each run).
 - main imports `nn::os::GetSystemTick`, `ConvertToTimeSpan`, `nn::time::StandardSteadyClock::now`, timer events and
   `nn::vi::GetDisplayVsyncEvent`, among 94 clock-like imports.
 

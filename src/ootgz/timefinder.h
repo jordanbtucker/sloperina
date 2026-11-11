@@ -4,7 +4,7 @@
  * since the last one, and none of its calls that were hooked (nn::os::GetSystemTick, ConvertToTimeSpan,
  * the event waits, the display's vsync) is where it gets that from, so it presumably reads the timer
  * register itself. What it keeps, though, is in memory: a timestamp that moves on by a frame each frame.
- * This finds such values (as timer ticks, as nanoseconds, or as seconds in a double), and when frame
+ * This finds such values in the modules' data (as timer ticks, as nanoseconds, or as seconds in a double), and when frame
  * advance lets a frame through, moves them on so the game sees 1/60 s since the last frame it played. */
 #ifndef TIMEFINDER_H
 #define TIMEFINDER_H
