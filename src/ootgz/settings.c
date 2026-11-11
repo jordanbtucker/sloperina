@@ -19,7 +19,7 @@
 
 #include "cheats.h"
 #include "enemyhp.h"
-#include "gameclock.h"
+#include "timefinder.h"
 #include "gfx.h"
 #include "sys.h"
 #include "warp.h"

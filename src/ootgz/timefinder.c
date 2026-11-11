@@ -26,8 +26,9 @@ typedef struct {
   uint64_t last;      /* the value at the last frame (a double's bits for D_SECONDS) */
   uint32_t framely;   /* frames it moved on by about one frame */
   uint32_t still;     /* frames in a row it hasn't changed */
-  double moved_ms;    /* since the last timefinder_take */
 } hit_t;
+
+bool game_clock_stops = true;
 
 static enum { IDLE, SCANNING, CHECKING, DONE } state;
 static uint32_t frames;
@@ -86,7 +87,7 @@ static void add_hit(uintptr_t addr, domain_t domain, uint64_t value)
 {
   if (n_hits >= MAX_HITS || (addr >= own_lo && addr < own_hi))
     return;
-  hits[n_hits++] = (hit_t){ addr, domain, value, 0, 0, 0 };
+  hits[n_hits++] = (hit_t){ addr, domain, value, 0, 0 };
   hits_seen[domain]++;
 }
 
@@ -162,7 +163,6 @@ static void check_hits(void)
   for (int i = 0; i < n_hits && n_found < MAX_FOUND; i++)
     if (hits[i].framely >= CHECK_FRAMES * 3 / 4) {
       found[n_found] = hits[i];
-      found[n_found].moved_ms = 0;
       sys_meminfo_t info;
       sys_query_memory(&info, hits[i].addr);
       log_printf("time finder: %#lx (%s, region %#lx type %u) moves a frame a frame, %u of %u", /* not menu text */
@@ -240,24 +240,10 @@ void timefinder_frame(void)
   }
 }
 
-/* how far each found value moved since it was last looked at */
-static void follow_found(void)
-{
-  for (int i = 0; i < n_found; i++) {
-    hit_t *h = &found[i];
-    if (!sys_mapped(h->addr, 8, SYS_PERM_R))
-      continue;
-    uint64_t v = *(const volatile uint64_t *)h->addr;
-    h->moved_ms += value_ms(h->domain, v) - value_ms(h->domain, h->last);
-    h->last = v;
-  }
-}
-
 void timefinder_shift(int64_t ticks)
 {
   if (state != DONE)
     return;
-  follow_found(); /* what moved while held is the game's own (other threads') */
   uint64_t mag = ticks < 0 ? (uint64_t)-ticks : (uint64_t)ticks;
   uint64_t ns = ticks_to_ns(mag);
   uint64_t by[D_COUNT] = {mag, ns, ns / 1000, 0};
@@ -279,18 +265,4 @@ void timefinder_shift(int64_t ticks)
     *p = v;
     h->last = v; /* the shift isn't the game's own movement */
   }
-}
-
-void timefinder_take(char *buf, int len)
-{
-  int n = 0;
-  buf[0] = 0;
-  follow_found();
-  for (int i = 0; i < n_found && n < len; i++) {
-    n += snprintf(buf + n, len - n, " %lx %+.1f", (unsigned long)(found[i].addr & 0xFFFFFFF), /* not menu text */
-                  found[i].moved_ms);
-    found[i].moved_ms = 0;
-  }
-  for (int i = 0; i < n_found; i++)
-    found[i].moved_ms = 0;
 }

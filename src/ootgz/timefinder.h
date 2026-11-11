@@ -5,7 +5,7 @@
  * the event waits, the display's vsync) is where it gets that from, so it presumably reads the timer
  * register itself. What it keeps, though, is in memory: a timestamp that moves on by a frame each frame.
  * This finds such values (as timer ticks, as nanoseconds, or as seconds in a double), and when frame
- * advance lets a frame through, moves them on by the time it was held, so the game sees one frame's time. */
+ * advance lets a frame through, moves them on so the game sees 1/60 s since the last frame it played. */
 #ifndef TIMEFINDER_H
 #define TIMEFINDER_H
 
@@ -15,12 +15,12 @@
 /* Once a frame from the frame hook, while the game runs (not held): scans memory a slice at a time once,
  * then checks what it found. */
 void timefinder_frame(void);
+/* Setting (frame advance > stop the clock): each frame let through plays 1/60 s, however long it was held. */
+extern bool game_clock_stops;
 /* Moves what was found on by `ticks` (timer ticks; negative moves it back), so the game's next frame
  * time is that much shorter. */
 void timefinder_shift(int64_t ticks);
 /* Frame advance held the game this frame: the next frame's move isn't a frame's. */
 void timefinder_held(void);
-/* How far the found values moved since the last call, as text for the log ("" if none found yet). */
-void timefinder_take(char *buf, int len);
 
 #endif

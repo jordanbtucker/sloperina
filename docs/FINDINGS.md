@@ -727,7 +727,7 @@ From the `fa step` / `fa run` diagnostic lines (one step = one frame let through
 - With R held at a step (opening the quick-swap menu), the very next step already has one read: the menu's pause
   took hold after one gameplay frame. The game's own pause is clock-timed (§9.1: the pause request comes about
   60 ms after the pre request), so it's thought (not checked) that the paused time made it take hold at once.
-  **settings > frame advance > stop the clock** (gameclock.c) is the attempt to fix that.
+  A first attempt froze main's `GetSystemTick` while paused; it changed nothing (below).
 - The game moves its physics by the time since the last frame (a step after a long hold moves 3-5 frames'
   worth). Not by main's `GetSystemTick` (freezing it changed nothing) nor the vsync event waits: it keeps timer
   ticks in memory (8 found: 2 in main's data, 6 on the heap, e.g. heap +0x1b087e0) that move on one frame a

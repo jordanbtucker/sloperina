@@ -5,7 +5,7 @@
 
 #include "cheats.h"
 #include "data.h"
-#include "gameclock.h"
+#include "timefinder.h"
 #include "gamedata.h"
 #include "airwall.h"
 #include "enemyhp.h"
