@@ -1,0 +1,223 @@
+#include "timefinder.h"
+
+#include "sys.h"
+
+#define MEM_TYPE_MASK       0xFF
+#define MEM_TYPE_CODE_DATA  0x04 /* a module's .data / .bss */
+#define MEM_TYPE_NORMAL     0x05 /* the heap */
+#define MEM_ATTR_LOCKED     1
+
+#define START_AFTER_FRAMES  900              /* let the game settle first */
+#define SCAN_BUDGET         (24u << 20)      /* bytes read a frame */
+#define WINDOW_MS           100              /* "now": within the last this many ms */
+#define MAX_HITS            512
+#define CHECK_FRAMES        40               /* frames each hit is followed for */
+#define MAX_FOUND           16
+
+typedef enum { D_TICKS, D_NS, D_SECONDS } domain_t;
+static const char *const domain_names[] = { "ticks", "ns", "s" }; /* not menu text */
+
+typedef struct {
+  uintptr_t addr;
+  domain_t domain;
+  uint64_t last;      /* the value at the last frame (a double's bits for D_SECONDS) */
+  uint32_t framely;   /* frames it moved on by about one frame */
+  double moved_ms;    /* since the last timefinder_take */
+} hit_t;
+
+static enum { IDLE, SCANNING, CHECKING, DONE } state;
+static uint32_t frames;
+static uintptr_t scan_pos;
+static hit_t hits[MAX_HITS];
+static int n_hits;
+static uint32_t checked_frames;
+static hit_t found[MAX_FOUND];
+static int n_found;
+static uintptr_t own_lo, own_hi; /* this module's own data: it keeps timestamps too */
+
+static double ticks_per_ms(void) { return (double)sys_tick_freq() / 1000.0; }
+
+static uint64_t ticks_to_ns(uint64_t ticks)
+{
+  uint64_t freq = sys_tick_freq();
+  return ticks / freq * 1000000000ull + ticks % freq * 1000000000ull / freq;
+}
+
+/* the value's time, in ms of timer time (comparable across domains) */
+static double value_ms(domain_t domain, uint64_t value)
+{
+  switch (domain) {
+    case D_TICKS: return (double)value / ticks_per_ms();
+    case D_NS: return (double)value / 1e6;
+    default: {
+      double seconds;
+      __builtin_memcpy(&seconds, &value, 8);
+      return seconds * 1000.0;
+    }
+  }
+}
+
+static void add_hit(uintptr_t addr, domain_t domain, uint64_t value)
+{
+  if (n_hits >= MAX_HITS || (addr >= own_lo && addr < own_hi))
+    return;
+  hits[n_hits++] = (hit_t){ addr, domain, value, 0, 0 };
+}
+
+static void scan_slice(void)
+{
+  uint64_t now = sys_tick();
+  uint64_t window = (uint64_t)(WINDOW_MS * ticks_per_ms());
+  uint64_t now_ns = ticks_to_ns(now), window_ns = (uint64_t)WINDOW_MS * 1000000ull;
+  double now_s = (double)now / (double)sys_tick_freq();
+  uint32_t budget = SCAN_BUDGET;
+  for (int guard = 0; guard < 4096 && budget >= 8; guard++) {
+    sys_meminfo_t info;
+    if (sys_query_memory(&info, scan_pos) != 0 || info.size == 0 || info.addr + info.size <= scan_pos) {
+      state = CHECKING;
+      return;
+    }
+    uintptr_t end = (uintptr_t)(info.addr + info.size);
+    uint32_t type = info.type & MEM_TYPE_MASK;
+    if ((type != MEM_TYPE_CODE_DATA && type != MEM_TYPE_NORMAL) || (info.perm & 3) != 3 ||
+        (info.attr & MEM_ATTR_LOCKED)) {
+      scan_pos = end;
+      continue;
+    }
+    uintptr_t stop = end - scan_pos > budget ? scan_pos + budget : end;
+    for (uintptr_t p = scan_pos; p + 8 <= stop; p += 8) {
+      uint64_t v = *(const volatile uint64_t *)p;
+      if (v - (now - window) <= window)
+        add_hit(p, D_TICKS, v);
+      else if (v - (now_ns - window_ns) <= window_ns)
+        add_hit(p, D_NS, v);
+      else if ((v >> 52) == 0x40D || (v >> 52) == 0x40E) { /* a double from 16384 to 65535: quick filter */
+        double d;
+        __builtin_memcpy(&d, &v, 8);
+        if (d <= now_s && d >= now_s - WINDOW_MS / 1000.0)
+          add_hit(p, D_SECONDS, v);
+      }
+    }
+    budget -= (uint32_t)(stop - scan_pos);
+    scan_pos = stop;
+    if (stop == end && end == 0)
+      break;
+  }
+}
+
+/* each frame: which hits moved on by about a frame (8 to 40 ms; a frame can run long) */
+static void check_hits(void)
+{
+  for (int i = 0; i < n_hits; i++) {
+    hit_t *h = &hits[i];
+    if (!sys_mapped(h->addr, 8, SYS_PERM_R))
+      continue;
+    uint64_t v = *(const volatile uint64_t *)h->addr;
+    double moved = value_ms(h->domain, v) - value_ms(h->domain, h->last);
+    if (moved >= 8.0 && moved <= 40.0)
+      h->framely++;
+    h->last = v;
+  }
+  if (++checked_frames < CHECK_FRAMES)
+    return;
+  for (int i = 0; i < n_hits && n_found < MAX_FOUND; i++)
+    if (hits[i].framely >= CHECK_FRAMES * 3 / 4) {
+      found[n_found] = hits[i];
+      found[n_found].moved_ms = 0;
+      sys_meminfo_t info;
+      sys_query_memory(&info, hits[i].addr);
+      log_printf("time finder: %#lx (%s, region %#lx type %u) moves a frame a frame, %u of %u", /* not menu text */
+                 (unsigned long)hits[i].addr, domain_names[hits[i].domain], (unsigned long)info.addr,
+                 (unsigned)(info.type & MEM_TYPE_MASK), (unsigned)hits[i].framely, (unsigned)CHECK_FRAMES);
+      n_found++;
+    }
+  log_printf("time finder: %d of %d values near the time follow the frames", n_found, n_hits); /* not menu text */
+  state = DONE;
+}
+
+void timefinder_frame(void)
+{
+  switch (state) {
+    case IDLE:
+      if (++frames < START_AFTER_FRAMES)
+        return;
+      {
+        extern char __bss_end__[];
+        sys_meminfo_t info;
+        static int marker;
+        if (sys_query_memory(&info, (uintptr_t)&marker) == 0) {
+          own_lo = (uintptr_t)info.addr;
+          own_hi = (uintptr_t)(info.addr + info.size);
+          if ((uintptr_t)__bss_end__ > own_hi)
+            own_hi = (uintptr_t)__bss_end__;
+        }
+      }
+      scan_pos = 0;
+      state = SCANNING;
+      log_printf("time finder: scanning"); /* not menu text */
+      return;
+    case SCANNING:
+      scan_slice();
+      if (state == CHECKING)
+        log_printf("time finder: %d values near the time", n_hits); /* not menu text */
+      return;
+    case CHECKING:
+      check_hits();
+      return;
+    case DONE:
+      return;
+  }
+}
+
+/* how far each found value moved since it was last looked at */
+static void follow_found(void)
+{
+  for (int i = 0; i < n_found; i++) {
+    hit_t *h = &found[i];
+    if (!sys_mapped(h->addr, 8, SYS_PERM_R))
+      continue;
+    uint64_t v = *(const volatile uint64_t *)h->addr;
+    h->moved_ms += value_ms(h->domain, v) - value_ms(h->domain, h->last);
+    h->last = v;
+  }
+}
+
+void timefinder_shift(uint64_t ticks)
+{
+  if (state != DONE)
+    return;
+  follow_found(); /* what moved while held is the game's own (other threads') */
+  for (int i = 0; i < n_found; i++) {
+    hit_t *h = &found[i];
+    if (!sys_mapped(h->addr, 8, SYS_PERM_R | SYS_PERM_W))
+      continue;
+    volatile uint64_t *p = (volatile uint64_t *)h->addr;
+    uint64_t v = *p;
+    switch (h->domain) {
+      case D_TICKS: v += ticks; break;
+      case D_NS: v += ticks_to_ns(ticks); break;
+      default: {
+        double d;
+        __builtin_memcpy(&d, &v, 8);
+        d += (double)ticks / (double)sys_tick_freq();
+        __builtin_memcpy(&v, &d, 8);
+      }
+    }
+    *p = v;
+    h->last = v; /* the shift isn't the game's own movement */
+  }
+}
+
+void timefinder_take(char *buf, int len)
+{
+  int n = 0;
+  buf[0] = 0;
+  follow_found();
+  for (int i = 0; i < n_found && n < len; i++) {
+    n += snprintf(buf + n, len - n, " %lx %+.1f", (unsigned long)(found[i].addr & 0xFFFFFFF), /* not menu text */
+                  found[i].moved_ms);
+    found[i].moved_ms = 0;
+  }
+  for (int i = 0; i < n_found; i++)
+    found[i].moved_ms = 0;
+}

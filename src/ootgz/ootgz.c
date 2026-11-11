@@ -40,6 +40,7 @@
 #include "position.h"
 #include "lock.h"
 #include "sys.h"
+#include "timefinder.h"
 #include "timeprobe.h"
 #include "z64hd.h"
 #include "z64hd_builds.h"
@@ -300,6 +301,8 @@ static void fa_diag_hook(void)
   fa_diag_game_thread = input_thread();
   char times[200];
   timeprobe_take(times, sizeof(times));
+  char stamps[160];
+  timefinder_take(stamps, sizeof(stamps));
   fa_diag_kind_t kind = fa_diag.kind;
   fa_diag.kind = FA_DIAG_NONE;
   if (kind == FA_DIAG_NONE)
@@ -338,6 +341,8 @@ static void fa_diag_hook(void)
   fa_diag.held_reads = 0;
   if (times[0])
     log_printf("fa %s calls:%s", what, times); /* not menu text */
+  if (stamps[0])
+    log_printf("fa %s timestamps moved (ms):%s", what, stamps); /* not menu text */
 }
 
 /* Holds the game's thread here while paused, running the menu and overlays, until a frame is let
@@ -415,6 +420,8 @@ static void fa_hold_game(void)
     }
   }
   game_clock_release();
+  if (game_clock_stops) /* the game's own timestamps: moved on by the time held */
+    timefinder_shift(sys_tick() - paused_at);
   char held_times[200];
   timeprobe_take(held_times, sizeof(held_times));
   if (held_times[0])
@@ -530,6 +537,7 @@ static void frame(void)
   frames_run++;
   fa_diag_hook();
   timeprobe_frame();
+  timefinder_frame();
   sys_frame();
   input_update();
 

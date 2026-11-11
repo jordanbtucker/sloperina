@@ -41,9 +41,13 @@ static uint64_t game_tick(void)
   return real_tick() - __atomic_load_n(&offset, __ATOMIC_ACQUIRE);
 }
 
+/* Stopping main's GetSystemTick didn't change how much a frame let through plays (the game times its
+ * frames by something else), so it's off: the wrapper only counts reads. timefinder.c does the stopping. */
+#define FREEZE_SYSTEM_TICK 0
+
 void game_clock_hold(void)
 {
-  if (!next_get_tick || !game_clock_stops || held)
+  if (!FREEZE_SYSTEM_TICK || !next_get_tick || !game_clock_stops || held)
     return;
   stood_at = real_tick() - offset;
   __atomic_store_n(&held, true, __ATOMIC_RELEASE);

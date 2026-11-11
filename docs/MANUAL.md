@@ -316,7 +316,7 @@ pause behavior have not been separately fixed.
 |---|---|
 | **enabled** | Turns frame advance on ([4](#4-about-frame-advance)). Off by default; updating from 0.0.3 or older turns it off once. |
 | **in pause screen** | Off (the default): while the game's pause screen or an item menu is open, the button is the game's and doesn't start frame advance. On: it starts frame advance there too. |
-| **stop the clock** | On (the default): the game's clock (nn::os::GetSystemTick, as main reads it) stands still while frame advance holds the game, and moves on by at least 1/60 s for each frame let through. Off: it keeps running while paused. |
+| **stop the clock** | On (the default; experimental): about 15 s after the game starts, sloperinaGZ looks through the game's memory for the timestamps it times its frames by, then moves them on by the time the game was held each time a frame is let through, so the frame plays one frame's time. Off: a frame let through after a pause plays several frames' worth of movement. |
 | **pause icon** | gz's pause icon at the top left while paused. |
 | **button** | **L** or **R**. The game doesn't see that button while frame advance is on. |
 
@@ -363,9 +363,9 @@ game's pause screen closed):
   stay shortcuts and don't advance.
 - **Buffered input**: everything you press while paused, and the last direction you push each stick, is given to
   the next frame, even if you've let go by then.
-- **Stop the clock** (on by default): the game's clock stands still while paused, and each frame you let through
-  takes one frame's time (1/60 s) on it. Without it, the parts of the game timed by the clock (a menu opening, the
-  game's own pause taking hold) may count the whole time you were paused, and jump ahead in one frame.
+- **Stop the clock** (on by default, experimental): the game times its frames by the time since its last one,
+  so without it a frame let through after a pause plays 3-5 frames' worth of movement (a jump rises in 4-6 steps
+  instead of about 17 frames).
 - While paused the picture doesn't change (the game draws nothing), so the watches and input display update with
   each frame you let through. The menu can still be opened and used while paused; its button works the menu then.
 
