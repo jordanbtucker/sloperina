@@ -40,6 +40,7 @@
 #include "position.h"
 #include "lock.h"
 #include "sys.h"
+#include "timeprobe.h"
 #include "z64hd.h"
 #include "z64hd_builds.h"
 
@@ -276,6 +277,8 @@ static void fa_diag_let_go(fa_diag_kind_t kind)
   input_reads_t discard;
   input_reads_take(&discard);
   game_clock_reads_take();
+  char discard_time[8];
+  timeprobe_take(discard_time, sizeof(discard_time));
   fa_diag.kind = kind;
   fa_diag.let_go_at = sys_tick();
   fa_diag.frame = frame_counter();
@@ -295,6 +298,8 @@ static void fa_diag_hook(void)
   input_reads_take(&reads);
   uint32_t clock_reads = game_clock_reads_take();
   fa_diag_game_thread = input_thread();
+  char times[200];
+  timeprobe_take(times, sizeof(times));
   fa_diag_kind_t kind = fa_diag.kind;
   fa_diag.kind = FA_DIAG_NONE;
   if (kind == FA_DIAG_NONE)
@@ -331,6 +336,8 @@ static void fa_diag_hook(void)
              other_thread ? "another" : "game's", reads.n_threads > 1 ? "s" : "", when, /* not menu text */
              (unsigned)fa_diag.held_reads, moved);
   fa_diag.held_reads = 0;
+  if (times[0])
+    log_printf("fa %s calls:%s", what, times); /* not menu text */
 }
 
 /* Holds the game's thread here while paused, running the menu and overlays, until a frame is let
@@ -341,6 +348,8 @@ static void fa_hold_game(void)
 {
   fa_diag_release = FA_DIAG_RUNNING;
   game_clock_hold(); /* its clock stands still too */
+  char before_hold[8];
+  timeprobe_take(before_hold, sizeof(before_hold));
   input_reads_t reads;
   input_reads_take(&reads);
   uint32_t presents_at_start = gfx_presents;
@@ -406,6 +415,10 @@ static void fa_hold_game(void)
     }
   }
   game_clock_release();
+  char held_times[200];
+  timeprobe_take(held_times, sizeof(held_times));
+  if (held_times[0])
+    log_printf("fa held calls:%s", held_times); /* not menu text */
   input_reads_take(&reads);
   fa_diag.held_reads = reads.calls;
   if (fa_diag_release == FA_DIAG_STEP)
@@ -483,11 +496,11 @@ static bool contains(const char *s, const char *part)
 static bool log_clock_import(const char *name, uintptr_t *slot, void *ctx)
 {
   static const char *const parts[] = { "Tick", "Time", "Clock", "Vsync", "VSync", "Present", "Interval",
-                                       "Sleep", "Timer", "SyncWait", "Frame" };
+                                       "Sleep", "Timer", "SyncWait", "Frame", "Wait", "Event" };
   int *logged = ctx;
   for (size_t i = 0; i < sizeof(parts) / sizeof(*parts); i++)
     if (contains(name, parts[i])) {
-      if ((*logged)++ < 80)
+      if ((*logged)++ < 160)
         log_printf("main imports %s", name);
       break;
     }
@@ -516,6 +529,7 @@ static void frame(void)
   }
   frames_run++;
   fa_diag_hook();
+  timeprobe_frame();
   sys_frame();
   input_update();
 
