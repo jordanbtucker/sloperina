@@ -28,11 +28,11 @@ static bool same_string(const char *a, const char *b)
   return *a == *b;
 }
 
-uintptr_t *got_slot(uintptr_t module, const char *name)
+bool got_each_import(uintptr_t module, bool (*fn)(const char *name, uintptr_t *slot, void *ctx), void *ctx)
 {
   uintptr_t mod0 = module + *(const uint32_t *)(module + MOD0_OFFSET_FIELD);
   if (*(const uint32_t *)mod0 != MOD0_MAGIC)
-    return 0;
+    return false;
   const dyn_t *dynamic = (const dyn_t *)(mod0 + *(const int32_t *)(mod0 + MOD0_DYNAMIC_FIELD));
   uint64_t symtab = 0, strtab = 0, rela = 0, relasz = 0, jmprel = 0, pltrelsz = 0;
   for (int i = 0; i < MAX_DYNAMIC_ENTRIES && dynamic[i].tag != DT_NULL; i++) {
@@ -48,7 +48,7 @@ uintptr_t *got_slot(uintptr_t module, const char *name)
     }
   }
   if (!symtab || !strtab)
-    return 0;
+    return false;
 
   /* the PLT relocations first, then the others */
   const struct { uint64_t at, size; } tables[] = { { jmprel, pltrelsz }, { rela, relasz } };
@@ -62,11 +62,30 @@ uintptr_t *got_slot(uintptr_t module, const char *name)
       if (!symbol_index || (type != R_AARCH64_GLOB_DAT && type != R_AARCH64_JUMP_SLOT && type != R_AARCH64_ABS64))
         continue;
       const sym_t *symbol = (const sym_t *)(module + symtab) + symbol_index;
-      if (symbol->shndx == SHN_UNDEF && same_string((const char *)(module + strtab + symbol->name), name))
-        return (uintptr_t *)(module + relocs[i].offset);
+      if (symbol->shndx == SHN_UNDEF &&
+          fn((const char *)(module + strtab + symbol->name), (uintptr_t *)(module + relocs[i].offset), ctx))
+        return true;
     }
   }
-  return 0;
+  return false;
+}
+
+struct find_import { const char *name; uintptr_t *slot; };
+
+static bool is_import(const char *name, uintptr_t *slot, void *ctx)
+{
+  struct find_import *find = ctx;
+  if (!same_string(name, find->name))
+    return false;
+  find->slot = slot;
+  return true;
+}
+
+uintptr_t *got_slot(uintptr_t module, const char *name)
+{
+  struct find_import find = { name, 0 };
+  got_each_import(module, is_import, &find);
+  return find.slot;
 }
 
 /* True if addr is code in a mapped region that doesn't hold `module`'s start. */

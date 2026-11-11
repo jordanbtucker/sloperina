@@ -19,6 +19,7 @@
 #include "gameimage.h"
 #include "uishader.h"
 #include "gfx.h"
+#include "got.h"
 #include "input.h"
 #include "job.h"
 #include "link.h"
@@ -443,8 +444,39 @@ static void fa_frame(void)
 
 /* --- frame hook -------------------------------------------------------------------------- */
 
+/* Frame advance diagnostics: main's imports that could be its clock (a game that times its frames by
+ * the clock would play a frame let through after a long hold as a long one). Logged once. */
+static bool contains(const char *s, const char *part)
+{
+  for (; *s; s++) {
+    const char *a = s, *b = part;
+    while (*a && *a == *b)
+      a++, b++;
+    if (!*b)
+      return true;
+  }
+  return false;
+}
+
+static bool log_clock_import(const char *name, uintptr_t *slot, void *ctx)
+{
+  static const char *const parts[] = { "Tick", "Time", "Clock", "Vsync", "VSync", "Present", "Interval",
+                                       "Sleep", "Timer", "SyncWait", "Frame" };
+  int *logged = ctx;
+  for (size_t i = 0; i < sizeof(parts) / sizeof(*parts); i++)
+    if (contains(name, parts[i])) {
+      if ((*logged)++ < 80)
+        log_printf("main imports %s", name);
+      break;
+    }
+  return false;
+}
+
 static void first_frame(void)
 {
+  int clock_imports = 0;
+  got_each_import(z64hd_main, log_clock_import, &clock_imports);
+  log_printf("main: %d imports that may be clocks", clock_imports);
   menus_build();
   settings_load();
   gamefont_load(); /* the game's type for the panels (nativeui.c); gz's pixel font if it can't */
