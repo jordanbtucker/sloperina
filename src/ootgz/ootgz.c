@@ -351,21 +351,6 @@ static void fa_frame(void)
 
 /* --- frame hook -------------------------------------------------------------------------- */
 
-/* Average frame time over the last 600 frames, in the log (to compare performance). */
-static void frame_time_log(void)
-{
-  static uint64_t since;
-  static uint32_t count;
-  uint64_t now = sys_tick();
-  if (since == 0)
-    since = now;
-  if (++count < 600)
-    return;
-  log_printf("frames: %.2f ms on average", (double)(now - since) / (double)sys_tick_freq() * 1000.0 / count); /* not menu text */
-  since = now;
-  count = 0;
-}
-
 static void first_frame(void)
 {
   menus_build();
@@ -386,7 +371,6 @@ static void frame(void)
   frames_run++;
   if (frame_advance && game_clock_stops) /* the scan costs time: only when it will be used */
     timefinder_frame();
-  frame_time_log();
   sys_frame();
   input_update();
 
