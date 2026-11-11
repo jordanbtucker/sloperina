@@ -220,26 +220,28 @@ static void follow_found(void)
   }
 }
 
-void timefinder_shift(uint64_t ticks)
+void timefinder_shift(int64_t ticks)
 {
   if (state != DONE)
     return;
   follow_found(); /* what moved while held is the game's own (other threads') */
+  uint64_t mag = ticks < 0 ? (uint64_t)-ticks : (uint64_t)ticks;
+  uint64_t ns = ticks_to_ns(mag);
+  uint64_t by[D_COUNT] = {mag, ns, ns / 1000, 0};
+  double seconds = (double)ticks / (double)sys_tick_freq();
   for (int i = 0; i < n_found; i++) {
     hit_t *h = &found[i];
     if (!sys_mapped(h->addr, 8, SYS_PERM_R | SYS_PERM_W))
       continue;
     volatile uint64_t *p = (volatile uint64_t *)h->addr;
     uint64_t v = *p;
-    switch (h->domain) {
-      case D_TICKS: v += ticks; break;
-      case D_NS: v += ticks_to_ns(ticks); break;
-      default: {
-        double d;
-        __builtin_memcpy(&d, &v, 8);
-        d += (double)ticks / (double)sys_tick_freq();
-        __builtin_memcpy(&v, &d, 8);
-      }
+    if (h->domain == D_SECONDS) {
+      double d;
+      __builtin_memcpy(&d, &v, 8);
+      d += seconds;
+      __builtin_memcpy(&v, &d, 8);
+    } else {
+      v = ticks < 0 ? v - by[h->domain] : v + by[h->domain];
     }
     *p = v;
     h->last = v; /* the shift isn't the game's own movement */

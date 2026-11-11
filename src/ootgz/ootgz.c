@@ -348,6 +348,10 @@ static void fa_diag_hook(void)
 /* Holds the game's thread here while paused, running the menu and overlays, until a frame is let
  * through or the game is set running again. */
 static fa_diag_kind_t fa_diag_release; /* why fa_hold_game let the game go */
+/* When frame advance last let a frame go (the pausing frame or a step). The game times each frame by
+ * the timer (measured: a step's physics scaled with the time since the last one), so each frame let
+ * go is made to look 1/60 s long to it, whatever it took and however long it was held. */
+static uint64_t fa_let_go_at;
 
 static void fa_hold_game(void)
 {
@@ -420,8 +424,9 @@ static void fa_hold_game(void)
     }
   }
   game_clock_release();
-  if (game_clock_stops) /* the game's own timestamps: moved on by the time held */
-    timefinder_shift(sys_tick() - paused_at);
+  if (game_clock_stops) /* the game's own timestamps: moved on so the last frame took 1/60 s */
+    timefinder_shift((int64_t)(sys_tick() - fa_let_go_at) - (int64_t)(sys_tick_freq() / 60));
+  fa_let_go_at = sys_tick();
   char held_times[200];
   timeprobe_take(held_times, sizeof(held_times));
   if (held_times[0])
@@ -473,6 +478,7 @@ static void fa_frame(void)
      * icon on it: the screen shows the game is paused (and hasn't crashed). Held from the next one. */
     gfx_pause_icon = pause_display ? 1 : 0;
     fa_diag.steps = 0;
+    fa_let_go_at = sys_tick();
     fa_diag_let_go(FA_DIAG_PAUSING);
     return;
   }

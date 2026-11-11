@@ -15,8 +15,9 @@
 /* Once a frame from the frame hook, while the game runs (not held): scans memory a slice at a time once,
  * then checks what it found. */
 void timefinder_frame(void);
-/* The game was held for `ticks` (timer ticks) and is let go now: move what was found on by that much. */
-void timefinder_shift(uint64_t ticks);
+/* Moves what was found on by `ticks` (timer ticks; negative moves it back), so the game's next frame
+ * time is that much shorter. */
+void timefinder_shift(int64_t ticks);
 /* How far the found values moved since the last call, as text for the log ("" if none found yet). */
 void timefinder_take(char *buf, int len);
 
