@@ -239,6 +239,61 @@ void macro_frame_released(void)
   input_take_game_seen(&ignored_buttons, ignored_stick);
 }
 
+/* --- shortcuts ------------------------------------------------------------------------------------- */
+
+#define SHORTCUT_DPAD (BTN_DUP | BTN_DDOWN | BTN_DLEFT | BTN_DRIGHT)
+static bool shortcut_hiding; /* a shortcut went off: its buttons are kept from the game until let go */
+
+/* Stopping a recording with the shortcut: the frames at its end where R and Y were both held are the
+ * shortcut being pressed, not part of the macro. */
+static void drop_shortcut_tail(void)
+{
+  if (position != length)
+    return;
+  while (length && (frames[length - 1].buttons & MACRO_SHORTCUT_MOD) == MACRO_SHORTCUT_MOD)
+    length--;
+  position = length;
+}
+
+uint32_t macro_shortcuts(bool menu_open)
+{
+  bool fired = true;
+  if (menu_open) {
+    fired = false;
+  } else if (input_combo(MACRO_SHORTCUT_MOD | BTN_DUP)) {
+    if (state == MACRO_RECORDING) {
+      macro_stop();
+      drop_shortcut_tail();
+      gfx_notice("macro: stopped");
+    } else {
+      macro_record();
+      gfx_notice("macro: recording");
+    }
+  } else if (input_combo(MACRO_SHORTCUT_MOD | BTN_DDOWN)) {
+    if (state == MACRO_PLAYING) {
+      macro_stop();
+      gfx_notice("macro: stopped");
+    } else {
+      if (state == MACRO_RECORDING)
+        drop_shortcut_tail();
+      macro_rewind();
+      macro_play();
+      if (state == MACRO_PLAYING)
+        gfx_notice("macro: playing from the start");
+    }
+  } else if (input_combo(MACRO_SHORTCUT_MOD | BTN_DRIGHT)) {
+    macro_set_loop(true, position);
+    gfx_notice(loop_on ? "macro: loops from this frame" : "macro: the loop's first frame is past the end");
+  } else {
+    fired = false;
+  }
+  if (fired)
+    shortcut_hiding = true;
+  else if (!(input_held() & (MACRO_SHORTCUT_MOD | SHORTCUT_DPAD)))
+    shortcut_hiding = false;
+  return shortcut_hiding ? MACRO_SHORTCUT_MOD | SHORTCUT_DPAD : 0;
+}
+
 /* --- files ----------------------------------------------------------------------------------------- */
 
 static void put32(uint8_t *p, uint32_t v)

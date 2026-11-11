@@ -243,6 +243,55 @@ int main(void)
   macro_stop();
   puts("PASS: looping from a frame, kept in the file, turned off by trim");
 
+  /* shortcuts: R + Y + D-pad up / down / right, with the menu closed */
+  macro_clear();
+  macro_merge_input = false;
+#define HOLD(b) (buttons_pressed = (b) & ~buttons_held, buttons_held = (b))
+  HOLD(BTN_R | BTN_Y);
+  assert(macro_shortcuts(false) == 0); /* not yet: no D-pad */
+  HOLD(BTN_R | BTN_Y | BTN_DUP);
+  assert(macro_shortcuts(true) == 0 && macro_state() == MACRO_IDLE); /* not with the menu open */
+  HOLD(0);
+  macro_shortcuts(false);
+  HOLD(BTN_R | BTN_Y | BTN_DUP);
+  uint32_t mask = macro_shortcuts(false);
+  assert(macro_state() == MACRO_RECORDING && (mask & (BTN_R | BTN_Y | BTN_DUP)) == (BTN_R | BTN_Y | BTN_DUP));
+  HOLD(BTN_Y); /* letting go, a button at a time: still kept from the game */
+  assert(macro_shortcuts(false) == mask);
+  HOLD(0);
+  assert(macro_shortcuts(false) == 0);
+  for (int i = 0; i < 3; i++) {
+    press(BTN_A << i, 0);
+    game_frame();
+  }
+  press(BTN_R | BTN_Y, 0); /* the shortcut's press reaches the game for a frame or two */
+  game_frame();
+  game_frame();
+  HOLD(BTN_R | BTN_Y | BTN_DUP);
+  macro_shortcuts(false);
+  assert(macro_state() == MACRO_IDLE && macro_length() == 3 && macro_position() == 3); /* those frames dropped */
+  HOLD(0);
+  macro_shortcuts(false);
+  HOLD(BTN_R | BTN_Y | BTN_DDOWN); /* play from the start */
+  macro_shortcuts(false);
+  assert(macro_state() == MACRO_PLAYING && macro_position() == 1);
+  game_frame();
+  assert(seen.buttons == BTN_A);
+  HOLD(0);
+  macro_shortcuts(false);
+  HOLD(BTN_R | BTN_Y | BTN_DRIGHT); /* loop from here (frame 2) */
+  macro_shortcuts(false);
+  assert(macro_loop_on() && macro_loop_from() == 2);
+  HOLD(0);
+  macro_shortcuts(false);
+  HOLD(BTN_R | BTN_Y | BTN_DDOWN); /* stop */
+  macro_shortcuts(false);
+  assert(macro_state() == MACRO_IDLE);
+  HOLD(0);
+  macro_shortcuts(false);
+  press(0, 0);
+  puts("PASS: shortcuts record / stop (dropping their own frames), play from the start, loop here; buttons kept from the game");
+
   /* growth past the first allocation */
   macro_clear();
   macro_record();

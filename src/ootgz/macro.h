@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "input.h"
 #include "menu.h"
 #include "sys.h"
 
@@ -40,6 +41,12 @@ void macro_build_menu(void);
 /* Frame hook, right after input_update and before the menu: stores the frame the game just played
  * (recording) or hands the game the next one (playing). */
 void macro_frame(void);
+/* Shortcuts, menu closed (they work while frame advance holds the game, where the menu can't be seen):
+ * R + Y + D-pad up record / stop, R + Y + D-pad down play from the start / stop, R + Y + D-pad right loop
+ * from the current frame. Returns the buttons to keep from the game (and out of frame advance's buffered
+ * input): after a shortcut, R, Y and the D-pad until they're all let go. Call once per input_update. */
+#define MACRO_SHORTCUT_MOD (BTN_R | BTN_Y)
+uint32_t macro_shortcuts(bool menu_open);
 /* Frame advance let a frame through: what the game read while it was held isn't that frame's. */
 void macro_frame_released(void);
 

@@ -203,6 +203,7 @@ static bool menu_controls(void)
 #define BUTTON_BITS 0xFFFF /* the buttons, not the stick-direction bits above them */
 
 static uint32_t buffered_buttons;
+static uint32_t fa_not_buffered; /* a macro shortcut's buttons (macro_shortcuts) */
 static bool buffered_stick_moved[2];   /* left, right */
 static int32_t buffered_stick_axes[4]; /* lx, ly, rx, ry */
 
@@ -212,7 +213,7 @@ static void fa_buffer_input(void)
     return;
   uint32_t held = input_held();
   uint32_t button = fa_button_bit();
-  uint32_t for_game = held & ~button & BUTTON_BITS;
+  uint32_t for_game = held & ~button & ~fa_not_buffered & BUTTON_BITS;
   if (held & button)
     for_game &= ~BTN_LSTICK; /* L3 with the button means "run", not something for the game */
   buffered_buttons |= for_game;
@@ -282,6 +283,10 @@ static void fa_hold_game(void)
       break;
     }
     menu_controls();
+    /* the macro shortcuts work here too (the menu can't be seen while held); their buttons aren't the game's */
+    fa_not_buffered = macro_shortcuts(menu_current != 0);
+    input_hide_from_game |= fa_not_buffered;
+    buffered_buttons &= ~fa_not_buffered;
     fa_event_t event = fa_read_button();
     if (event == FA_RUN) {
       fa_paused = false;
@@ -396,7 +401,8 @@ static void frame(void)
   enemyhp_frame(overlays_on_gpu);
   menus_research_frame();
   watches_frame(menu_current != 0);
-  levitate_frame(menu_current != 0);
+  levitate_frame(menu_current != 0); /* sets input_hide_from_game afresh: the others add to it */
+  input_hide_from_game |= macro_shortcuts(menu_current != 0);
   position_frame(menu_current != 0);
   divetest_frame(menu_current != 0);
   lock_frame();

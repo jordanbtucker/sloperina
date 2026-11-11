@@ -76,6 +76,9 @@ With the menu closed:
 | **X / B** held | Levitate up / down; release to hover |
 | **R3** held | Levitate: hold height even if X/B is held |
 | **L** or **R** (your choice) | Frame advance (if enabled, [2.10.3](#2103-frame-advance)) |
+| **R + Y + D-pad up** | Macro: record / stop ([2.13](#213-macro)) |
+| **R + Y + D-pad down** | Macro: play from the start / stop |
+| **R + Y + D-pad right** | Macro: loop from the current frame |
 
 ## 2 Menus
 
@@ -363,6 +366,11 @@ Notes:
 - With the menu open the game gets no input, so frames recorded with it open are blank. A playing macro wins over
   the menu, so those blank frames play back the same way: you can start recording or playback from the menu and
   close it.
+- The menu can't be seen while frame advance holds the game, so use the shortcuts there: **R + Y + D-pad up**
+  records / stops, **R + Y + D-pad down** plays from the start / stops, **R + Y + D-pad right** loops from the
+  current frame. They work with the game running too. Their buttons aren't given to the game (or buffered by frame
+  advance) once they go off, until they're let go; stopping a recording with the shortcut drops the frames at its
+  end where R and Y were held.
 - With frame advance on, nothing is recorded or played while the game is held; each frame let through is one macro
   frame. Record a frame at a time with frame advance, then **rewind** and **play** at full speed.
 - A macro only does the same thing again if the game starts from the same state: start playback where recording
