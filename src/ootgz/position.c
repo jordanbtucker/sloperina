@@ -6,10 +6,9 @@
  * ("Locating Link's starting position"), rather than acting later out of the blue; the next press works.
  * Saving needs the record so that the load after it is instant.
  *
- * A load waits until R and the d-pad of the shortcut are let go: holding R brings up the game's item
- * wheel, which freezes gameplay, and a frozen Link ignores a new position (every load made while they
- * were held failed). "loading position" shows at once, as "position saved" does (saving only reads, so
- * it doesn't wait), and "position loaded" when he's there. It's then checked: done once
+ * A load is written as soon as it's pressed (L3 + B; it used to wait for R + d-down to be let go, as
+ * R brings up the game's item wheel, which freezes Link). "loading position" shows at once, as
+ * "position saved" does, and "position loaded" when he's there. It's then checked: done once
  * Link is drawn there; otherwise written again a few times, and if it never takes, the record is put
  * back where Link is (so it isn't "lost" and searched for again). While it settles, the game's stores
  * can't move X, Y or Z (lock.c), so the game can't pull him off the write. */
@@ -24,7 +23,7 @@
 #include "sys.h"
 
 #define SAVE_COMBO (BTN_LSTICK | BTN_X) /* L3 + X */
-#define LOAD_COMBO (BTN_LSTICK | BTN_B) /* L3 + B; a load waits for it to be let go */
+#define LOAD_COMBO (BTN_LSTICK | BTN_B) /* L3 + B */
 #define SETTLE 20       /* frames for a load to show: checked each frame, then given up */
 #define MAX_WRITES 4    /* written again every RETRY_EVERY frames until Link is there */
 #define RETRY_EVERY 3
@@ -36,7 +35,7 @@ static double sx, sy, sz, sfx, sfz; /* drawn position; facing as a unit (x, z) *
 static char smap[64];
 
 static bool finding;  /* a press asked levitate.c for the record: say when it's found or not */
-static bool pending;  /* load pressed: waiting for the buttons to be let go */
+static bool pending;  /* load pressed: waiting for Link's record */
 static int settle;    /* frames left to see Link arrive */
 static int writes;
 
@@ -104,7 +103,7 @@ void position_load(void)
   if (need_record())
     return;
   pending = true;
-  gfx_notice("loading position"); /* now, while the wheel's up; "position loaded" once he's there */
+  gfx_notice("loading position"); /* "position loaded" once he's there */
 }
 
 static bool write_saved(void)
@@ -170,7 +169,7 @@ void position_frame(bool menu_open)
     gfx_notice("Link's position not found, move around and try again");
   }
 
-  if (pending && st == REC_READY && !(input_held() & LOAD_COMBO)) {
+  if (pending && st == REC_READY) {
     pending = false;
     writes = 0;
     lock_hold_set(true); /* the write holds: the game's stores can't pull him off it while it settles */
