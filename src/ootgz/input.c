@@ -179,13 +179,38 @@ uint32_t input_force_buttons;
 bool input_force_sticks[2];
 int32_t input_force_stick[4];
 
+/* L and what's pressed with it are the practice ROM's: the game never sees L, nor, while L is held, the
+ * other buttons (but in slow play). A button that was down with L stays hidden until it's let go, so
+ * letting go of L first (L + Plus, then Plus) doesn't hand the game a fresh press. States are newest
+ * first: they're gone through oldest first. Only connected controllers count (the game reads every style,
+ * and an unused one, all zeros, would otherwise give back what's still held). */
+static uint64_t held_with_l;
+
+static void hide_l_chords(void *states, int count)
+{
+  for (int i = count - 1; i >= 0; i--) {
+    npad_state_t *state = (npad_state_t *)((char *)states + i * NPAD_STATE_SIZE);
+    if (input_block_game || !(state->attributes & NPAD_ATTR_CONNECTED)) /* the game's other controllers */
+      continue;
+    if (input_slow_play) {
+      held_with_l = 0;
+      state->buttons &= ~(uint64_t)BTN_L;
+      continue;
+    }
+    if (state->buttons & BTN_L)
+      held_with_l |= state->buttons & 0xFFFF;
+    else
+      held_with_l &= state->buttons; /* let go: given back to the game from its next press */
+    state->buttons &= ~(held_with_l | BTN_L);
+  }
+}
+
 /* Edit the states the game just read: blank them while the menu is open, otherwise add frame
  * advance's buffered input and take out the buttons the game mustn't see (L and, while it's held, the
  * rest: see input_slow_play). */
 static void filter_game_states(void *states, int count)
 {
-  /* no early return: L is checked on every read, so it's hidden from the frame it goes down */
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; (input_block_game || input_hide_from_game || input_force_active) && i < count; i++) {
     npad_state_t *state = (npad_state_t *)((char *)states + i * NPAD_STATE_SIZE);
     if (input_block_game) {
       state->buttons = 0;
@@ -204,9 +229,8 @@ static void filter_game_states(void *states, int count)
       }
     }
     state->buttons &= ~(uint64_t)input_hide_from_game;
-    if (state->buttons & BTN_L) /* the shortcuts' button: nothing with it (but the other buttons in slow play) */
-      state->buttons &= ~(uint64_t)(input_slow_play ? BTN_L : 0xFFFF);
   }
+  hide_l_chords(states, count);
 }
 
 /* hid_wrap_N: whatever slot N held before (hid_next), then filter_game_states */
