@@ -123,6 +123,10 @@ the next frame.
 go back to where you started, then **rewind** and **play**. **export** / **import** keep it on the SD card
 (`sd:/sloperinaGZ/macros/`). A macro only matches if it starts from the same state as the recording.
 
+**...repeat part of a macro forever?**
+Go to the first frame of the part to repeat (**macro frame**) and press **L** on **loop from**. Playback then plays
+the start once and repeats from that frame until you **stop** it.
+
 **...see my inputs on screen?**
 **settings > input display > show**. Choose **style: controller** for a picture of a Pro Controller.
 

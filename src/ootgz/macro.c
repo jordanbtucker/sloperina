@@ -33,6 +33,8 @@ bool macro_merge_input;
 static macro_state_t state;
 static macro_input_t *frames;
 static uint32_t capacity, length, position;
+static bool loop_on;
+static uint32_t loop_from;
 static int slot;
 /* recording's check of how the game reads the controller (logged once per recording) */
 static uint32_t check_frames, check_reads, check_empty;
@@ -135,15 +137,28 @@ void macro_seek(uint32_t frame)
   }
 }
 
+bool macro_loop_on(void) { return loop_on; }
+uint32_t macro_loop_from(void) { return loop_from; }
+
+void macro_set_loop(bool on, uint32_t from)
+{
+  loop_from = from;
+  loop_on = on && from < length;
+}
+
 void macro_trim(void)
 {
   length = position;
+  if (loop_from >= length)
+    loop_on = false;
 }
 
 void macro_clear(void)
 {
   macro_stop();
   length = position = 0;
+  loop_on = false;
+  loop_from = 0;
 }
 
 static uint32_t trace_lines, trace_hooks;
@@ -204,6 +219,8 @@ void macro_frame(void)
   if (state == MACRO_RECORDING) {
     record_frame(reads, buttons, stick);
   } else if (state == MACRO_PLAYING) {
+    if (position >= length && loop_on && loop_from < length)
+      position = loop_from; /* the loop: on from its first frame, with no gap */
     if (position < length) {
       give_to_game(&frames[position++]);
     } else {
@@ -248,6 +265,15 @@ int64_t macro_parse_header(const uint8_t *data, uint64_t size)
   return count;
 }
 
+bool macro_parse_loop(const uint8_t *data, uint32_t count, uint32_t *from)
+{
+  uint32_t loop = get32(data + 20);
+  if (loop == 0 || loop > count)
+    return false;
+  *from = loop - 1;
+  return true;
+}
+
 static void slot_path(char *buf, size_t len, int n)
 {
   snprintf(buf, len, MACRO_DIR "/macro%d.sgm", n);
@@ -268,6 +294,7 @@ const char *macro_export(int n)
   put32(header + 8, MACRO_FILE_VERSION);
   put32(header + 12, length);
   put32(header + 16, sizeof(macro_input_t));
+  put32(header + 20, loop_on ? loop_from + 1 : 0);
   int64_t body = (int64_t)length * sizeof(macro_input_t);
   fs_create_dir(SD_DIR);
   fs_create_dir(MACRO_DIR); /* fails harmlessly if it exists */
@@ -321,6 +348,9 @@ const char *macro_import(int n)
     return "couldn't read the file";
   length = (uint32_t)count;
   position = 0;
+  uint32_t from;
+  if (macro_parse_loop(header, length, &from))
+    macro_set_loop(true, from);
   log_printf("macro: imported %u frames from %s", (unsigned)length, path);
   return 0;
 }
@@ -377,6 +407,26 @@ static int32_t get_frame(menu_item_t *it) { return (int32_t)position; }
 static void set_frame(menu_item_t *it, int32_t v) { macro_seek(v < 0 ? 0 : (uint32_t)v); }
 static int32_t max_frame(menu_item_t *it) { return (int32_t)length; }
 
+static bool get_loop(menu_item_t *it) { return loop_on; }
+
+static void set_loop(menu_item_t *it, bool on)
+{
+  macro_set_loop(on, loop_from);
+  if (on && !loop_on)
+    gfx_notice("macro: the loop's first frame is past the end");
+}
+
+static int32_t get_loop_from(menu_item_t *it) { return (int32_t)loop_from; }
+static void set_loop_from(menu_item_t *it, int32_t v) { macro_set_loop(loop_on, v < 0 ? 0 : (uint32_t)v); }
+static int32_t max_loop_from(menu_item_t *it) { return length ? (int32_t)length - 1 : 0; }
+
+/* L on "loop from": the loop starts at the current macro frame, and looping is on */
+static void loop_here(menu_item_t *it)
+{
+  macro_set_loop(true, position);
+  gfx_notice(loop_on ? "macro: loops from this frame" : "macro: the loop's first frame is past the end");
+}
+
 static int32_t get_slot(menu_item_t *it) { return slot; }
 static void set_slot(menu_item_t *it, int32_t v) { slot = v < 0 ? 0 : v >= MACRO_SLOTS ? MACRO_SLOTS - 1 : v; }
 static int32_t max_slot(menu_item_t *it) { return MACRO_SLOTS - 1; }
@@ -404,7 +454,7 @@ static void set_input_mode(menu_item_t *it, int choice)
 void macro_build_menu(void)
 {
   menu_t *m = &macro_menu;
-  menu_init(m, "macro", 17);
+  menu_init(m, "macro", 20);
   menu_add_heading(m, "macro");
   menu_add_text(m, text_status, 0);
   menu_item_t *it = menu_add_action(m, "record", act_record, 0);
@@ -422,6 +472,12 @@ void macro_build_menu(void)
   if (it)
     it->hint = "forgets every frame after this one";
   menu_add_action(m, "clear", act_clear, 0);
+  it = menu_add_check(m, "loop", get_loop, set_loop, 0);
+  if (it)
+    it->hint = "at the end, playback goes on from the loop's first frame until it's stopped";
+  it = menu_add_number(m, "loop from", get_loop_from, set_loop_from, max_loop_from, loop_here, 0);
+  if (it)
+    it->hint = "the loop's first frame (the frames before it play once)   L: the current frame";
   menu_end_group(m);
   menu_add_heading(m, "file");
   it = menu_add_number(m, "slot", get_slot, set_slot, max_slot, 0, 0);

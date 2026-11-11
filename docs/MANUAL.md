@@ -352,6 +352,8 @@ gz's macros: record the input the game is given, a frame at a time, and play it 
 | **rewind** | The current frame to 0. |
 | **trim** | Forgets every frame after the current one. |
 | **clear** | Empties the macro. |
+| **loop** | At the end, playback goes on from **loop from** instead of stopping, over and over until **stop**. The frames before it play once: a setup, then a repeated input (a jumpslash cancel's, say). Kept in exported files. |
+| **loop from** | The loop's first frame. **D-pad left / right** changes it; **L** sets it to the current macro frame and turns **loop** on. **trim** at or before it turns the loop off. |
 | **slot** `0`-`9` | The file **export** and **import** use: `sd:/sloperinaGZ/macros/macro<slot>.sgm`. |
 | **export** / **import** | Write the macro to the slot's file, or read it back (replacing the macro in memory). |
 | **macro input** | While playing: **replace controller** (default; the controller is ignored) or **add to controller** (its buttons are added, and a stick the macro leaves centred is the controller's). Kept in the settings file (`macro_input`). |

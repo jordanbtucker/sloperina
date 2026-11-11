@@ -53,10 +53,15 @@ void macro_clear(void);
 uint32_t macro_position(void);
 uint32_t macro_length(void);
 void macro_seek(uint32_t frame);
+/* Looping: when playback reaches the end it goes on from frame `from` (the frames before it play once),
+ * until it's stopped. Off after clear, or when trim cuts the macro at or before that frame. */
+void macro_set_loop(bool on, uint32_t from);
+bool macro_loop_on(void);
+uint32_t macro_loop_from(void);
 const macro_input_t *macro_frames(void);
 
 /* The file's layout (little-endian): MACRO_MAGIC, then u32 version, u32 frames, u32 frame size
- * (sizeof(macro_input_t)), u32 0, then the frames. Returns 0 or what went wrong. */
+ * (sizeof(macro_input_t)), u32 loop (0: none, else the loop's first frame + 1), then the frames. Returns 0 or what went wrong. */
 #define MACRO_MAGIC "SGZMACRO"
 #define MACRO_FILE_VERSION 1
 #define MACRO_HEADER_SIZE 24
@@ -64,5 +69,7 @@ const char *macro_export(int slot);
 const char *macro_import(int slot);
 /* checks a file's header: its frame count, or -1 if it isn't a macro this build can read */
 int64_t macro_parse_header(const uint8_t *data, uint64_t size);
+/* the loop a header asks for (call after macro_parse_header accepted it): false if none or out of range */
+bool macro_parse_loop(const uint8_t *data, uint32_t frames, uint32_t *from);
 
 #endif

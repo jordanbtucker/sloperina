@@ -34,6 +34,8 @@ menu_item_t *menu_add_number(menu_t *m, const char *l, int32_t (*g)(menu_item_t 
 menu_item_t *menu_add_option(menu_t *m, const char *l, int n, const char *const *c, int (*g)(menu_item_t *),
                              void (*s)(menu_item_t *, int), intptr_t d) { return 0; }
 menu_item_t *menu_add_return(menu_t *m) { return 0; }
+menu_item_t *menu_add_check(menu_t *m, const char *l, bool (*g)(menu_item_t *), void (*s)(menu_item_t *, bool),
+                            intptr_t d) { return 0; }
 
 /* one in-memory file for export / import */
 static uint8_t file_data[1 << 22];
@@ -191,6 +193,55 @@ int main(void)
   assert(macro_import(0) != 0);
   sd = true;
   puts("PASS: export / import round trip; bad, newer and empty files refused");
+
+  /* looping: frames 0-1 play once, then 2-4 over and over with no gap, until stopped */
+  macro_clear();
+  macro_record();
+  for (int i = 0; i < 5; i++) {
+    press(1u << i, 0);
+    game_frame();
+  }
+  macro_stop();
+  macro_set_loop(true, 2);
+  assert(macro_loop_on() && macro_loop_from() == 2);
+  macro_rewind();
+  macro_play();
+  int expect[] = { 0, 1, 2, 3, 4, 2, 3, 4, 2, 3, 4, 2 };
+  for (int i = 0; i < (int)(sizeof(expect) / sizeof(*expect)); i++) {
+    game_frame();
+    assert(seen.buttons == 1u << expect[i]);
+    assert(macro_state() == MACRO_PLAYING);
+  }
+  macro_stop();
+  /* the loop is kept in the file; an old file (0 there) has none */
+  assert(macro_export(4) == 0);
+  macro_clear();
+  assert(!macro_loop_on());
+  assert(macro_import(4) == 0 && macro_loop_on() && macro_loop_from() == 2);
+  file_data[20] = 0;
+  assert(macro_import(4) == 0 && !macro_loop_on());
+  file_data[20] = 9; /* past the end */
+  assert(macro_import(4) == 0 && !macro_loop_on());
+  /* trimming at or before the loop's first frame turns it off; a loop past the end can't be set */
+  macro_set_loop(true, 2);
+  macro_seek(3);
+  macro_trim();
+  assert(macro_loop_on());
+  macro_seek(2);
+  macro_trim();
+  assert(!macro_loop_on());
+  macro_set_loop(true, 5);
+  assert(!macro_loop_on());
+  /* a one-frame loop at the end */
+  macro_set_loop(true, 1);
+  macro_rewind();
+  macro_play();
+  for (int i = 0; i < 4; i++) {
+    game_frame();
+    assert(seen.buttons == (i == 0 ? 1u : 2u));
+  }
+  macro_stop();
+  puts("PASS: looping from a frame, kept in the file, turned off by trim");
 
   /* growth past the first allocation */
   macro_clear();
