@@ -37,6 +37,7 @@ static int slot;
 /* recording's check of how the game reads the controller (logged once per recording) */
 static uint32_t check_frames, check_reads, check_empty;
 static bool check_logged;
+static const char *const state_names_short[] = { "idle", "rec", "play" }; /* not menu text */
 
 macro_state_t macro_state(void) { return state; }
 uint32_t macro_position(void) { return position; }
@@ -145,11 +146,33 @@ void macro_clear(void)
   length = position = 0;
 }
 
-static void record_frame(void)
+static uint32_t trace_lines, trace_hooks;
+
+static bool trace_room(void)
 {
-  uint32_t buttons;
-  int32_t stick[4];
-  int reads = input_take_game_seen(&buttons, stick);
+  return MACRO_TRACE && trace_lines < MACRO_TRACE_LINES && (trace_lines++, true);
+}
+
+void macro_trace_note(const char *what)
+{
+  if (trace_room())
+    log_printf("trace hook %u: %s", (unsigned)trace_hooks, what);
+}
+
+/* one line per hook: what the game read since the last one, and what it's given next */
+static void trace_frame(int reads, uint32_t buttons, const int32_t stick[4])
+{
+  trace_hooks++;
+  if (!trace_room())
+    return;
+  log_printf("trace hook %u: %s pos %u, read %d: %x (%d,%d) next %x (%d,%d)%s", (unsigned)trace_hooks,
+             state_names_short[state], (unsigned)position, reads, (unsigned)buttons, (int)stick[0], (int)stick[1],
+             (unsigned)input_macro_buttons, (int)input_macro_stick[0], (int)input_macro_stick[1],
+             input_macro_active ? "" : " (off)"); /* not menu text */
+}
+
+static void record_frame(int reads, uint32_t buttons, const int32_t stick[4])
+{
   if (!check_logged) {
     check_frames++;
     check_reads += (uint32_t)reads;
@@ -175,8 +198,11 @@ static void record_frame(void)
 
 void macro_frame(void)
 {
+  uint32_t buttons;
+  int32_t stick[4];
+  int reads = input_take_game_seen(&buttons, stick); /* taken every frame: nothing builds up while idle */
   if (state == MACRO_RECORDING) {
-    record_frame();
+    record_frame(reads, buttons, stick);
   } else if (state == MACRO_PLAYING) {
     if (position < length) {
       give_to_game(&frames[position++]);
@@ -184,11 +210,9 @@ void macro_frame(void)
       macro_stop();
       gfx_notice("macro: finished");
     }
-  } else {
-    uint32_t ignored_buttons;
-    int32_t ignored_stick[4];
-    input_take_game_seen(&ignored_buttons, ignored_stick); /* nothing builds up while idle */
   }
+  if (MACRO_TRACE)
+    trace_frame(reads, buttons, stick);
 }
 
 void macro_frame_released(void)

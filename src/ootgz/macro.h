@@ -23,6 +23,14 @@ typedef struct {
 #define MACRO_MAX_FRAMES (60 * 60 * GAME_FPS) /* an hour of frames (about 2.6 MB) */
 #define MACRO_SLOTS 10
 
+/* 1: log every frame hook's input (what the game read, what a macro gave it) and frame advance's steps,
+ * to check how the game's frames line up with the hook (make OPTIONS=MACRO_TRACE=1). */
+#ifndef MACRO_TRACE
+#define MACRO_TRACE 0
+#endif
+#define MACRO_TRACE_LINES 3000 /* the most trace lines a game start writes */
+void macro_trace_note(const char *what); /* a frame advance step, in the trace */
+
 /* settings > macro input: false (default) a playing macro replaces the controller; true it's added */
 extern bool macro_merge_input;
 

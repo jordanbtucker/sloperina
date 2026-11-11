@@ -291,6 +291,12 @@ static void fa_hold_game(void)
     }
     if (event == FA_TAP || event == FA_REPEAT) { /* one frame, with what was pressed meanwhile */
       fa_release_buffered_input();
+      if (MACRO_TRACE) {
+        char note[64];
+        snprintf(note, sizeof(note), "frame advance lets a frame through, buffered %x", /* not menu text */
+                 (unsigned)buffered_buttons);
+        macro_trace_note(note);
+      }
       break;
     }
     fa_buffer_input();
@@ -347,8 +353,10 @@ static void fa_frame(void)
     fa_let_go_at = sys_tick();
     return;
   }
-  if (fa_paused)
+  if (fa_paused) {
+    macro_trace_note("frame advance holds the game"); /* not menu text */
     fa_hold_game();
+  }
 }
 
 /* --- frame hook -------------------------------------------------------------------------- */
