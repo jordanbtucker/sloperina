@@ -129,6 +129,13 @@ bool input_combo(uint32_t mask)
   return (buttons_held & mask) == mask && (buttons_pressed & mask);
 }
 
+bool input_shortcut(bool with_r, uint32_t button)
+{
+  if (!(buttons_held & BTN_L) || ((buttons_held & BTN_R) != 0) != with_r)
+    return false;
+  return (buttons_held & button) == button && (buttons_pressed & button);
+}
+
 bool input_repeat(uint32_t button)
 {
   return (buttons_fired & button) != 0;

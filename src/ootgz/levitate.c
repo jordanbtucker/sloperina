@@ -886,12 +886,12 @@ static void protect_landing(bool menu_open)
   }
 }
 
-/* L3: start / stop */
+/* L + D-left: start / stop */
 static void handle_l3(bool menu_open)
 {
   if (!levitate_enabled) {
     drop();
-  } else if (!menu_open && (input_pressed() & BTN_LSTICK)) {
+  } else if (!menu_open && input_shortcut(false, BTN_DLEFT)) {
     if (floating) {
       drop();
       gfx_notice("levitate off");

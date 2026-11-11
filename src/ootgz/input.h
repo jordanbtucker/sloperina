@@ -21,6 +21,9 @@ uint32_t input_held(void);
 uint32_t input_pressed(void);      /* went down this frame */
 /* All of `mask` held and at least one of them pressed this frame. */
 bool     input_combo(uint32_t mask);
+/* The practice ROM's shortcuts: L + `button`, or L + R + `button` (with_r), with `button` pressed this
+ * frame. L + button doesn't fire while R is held, so the two layers never overlap. */
+bool     input_shortcut(bool with_r, uint32_t button);
 /* Pressed, or held long enough to repeat (menu navigation). */
 bool     input_repeat(uint32_t button);
 void     input_sticks(int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry);

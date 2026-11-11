@@ -824,22 +824,21 @@ void watch_set_label(int index, const char *label)
 
 /* --- frame --------------------------------------------------------------------------------------- */
 
-/* gz's commands, while the menu is closed; the three-button ones first */
+/* The shortcuts, while the menu is closed: L + D-right, and the rare ones on L + R + the d-pad */
 static void command_input(void)
 {
-  uint32_t held = input_held();
-  if (input_combo(BTN_R | BTN_A | BTN_DLEFT)) {
+  if (input_shortcut(true, BTN_DUP)) {
     timer_toggle();
     gfx_notice("timer started/stopped");
-  } else if (input_combo(BTN_R | BTN_B | BTN_DLEFT)) {
+  } else if (input_shortcut(true, BTN_DDOWN)) {
     timer_reset();
     gfx_notice("timer reset");
-  } else if (input_combo(BTN_R | BTN_B | BTN_DRIGHT)) {
+  } else if (input_shortcut(true, BTN_DLEFT)) {
     lag_reset();
     gfx_notice("lag counter reset");
-  } else if (input_combo(BTN_R | BTN_A | BTN_DRIGHT)) {
+  } else if (input_shortcut(true, BTN_DRIGHT)) {
     gfx_notice(js_height_reset() ? "JS Height reset" : "JS Height: Link not found");
-  } else if (input_combo(BTN_R | BTN_DRIGHT) && !(held & (BTN_A | BTN_B))) {
+  } else if (input_shortcut(false, BTN_DRIGHT)) {
     watches_shown = !watches_shown;
     gfx_notice(watches_shown ? "watches shown" : "watches hidden");
   }

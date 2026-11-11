@@ -1523,7 +1523,7 @@ static bool move_panel(menu_item_t *it)
   if (gfx_custom_y[panel] >= 0 &&
       (gfx_custom_y[panel] - *y > WATCHES_ROUNDING || *y - gfx_custom_y[panel] > WATCHES_ROUNDING))
     *y = gfx_custom_y[panel];
-  if (input_pressed() & BTN_L) {
+  if (input_pressed() & BTN_A) {
     move_held = 0;
     gfx_logf("%s", movers[it->data].done);
     return false;
@@ -1867,7 +1867,7 @@ static bool custom_watch_edit(menu_item_t *it)
     custom_digit = custom_digit > CUSTOM_CANCEL ? custom_digit - 1 : CUSTOM_CANCEL;
   } else if (input_repeat(BTN_DRIGHT)) {
     custom_digit = custom_digit < CUSTOM_DIGITS - 1 ? custom_digit + 1 : CUSTOM_DIGITS - 1;
-  } else if (custom_digit == CUSTOM_CANCEL && (input_pressed() & BTN_L)) {
+  } else if (custom_digit == CUSTOM_CANCEL && (input_pressed() & BTN_A)) {
     gfx_logf("custom watch cancelled");
     return false;
   } else if (custom_digit == CUSTOM_CANCEL) {
@@ -1878,7 +1878,7 @@ static bool custom_watch_edit(menu_item_t *it)
     /* the digit goes round, f <-> 0, without carrying into the next */
     uintptr_t digit = ((custom_addr >> shift & 0xF) + (uintptr_t)(dir + 16)) & 0xF;
     custom_addr = (custom_addr & ~((uintptr_t)0xF << shift)) | digit << shift;
-  } else if (input_pressed() & BTN_L) {
+  } else if (input_pressed() & BTN_A) {
     if (watch_add_memory(custom_addr, custom_type))
       gfx_logf("added watch %0*lx", CUSTOM_DIGITS, (unsigned long)custom_addr);
     else
@@ -2346,7 +2346,6 @@ static void text_levitate(menu_item_t *it, char *buf, int len)
 }
 
 /* frame advance */
-static const char *const fa_button_names[] = { "L", "R" };
 
 static bool get_fa(menu_item_t *it)
 {
@@ -2388,16 +2387,6 @@ static void set_pause_display(menu_item_t *it, bool on)
   pause_display = on;
 }
 
-static int get_fa_button(menu_item_t *it)
-{
-  return frame_advance_button;
-}
-
-static void set_fa_button(menu_item_t *it, int button)
-{
-  frame_advance_button = button;
-}
-
 static void build_frame_advance(void)
 {
   menu_init(&m_frame_advance, "frame advance", 6);
@@ -2415,12 +2404,6 @@ static void build_frame_advance(void)
   menu_item_t *pause_icon = menu_add_check(&m_frame_advance, "pause icon", get_pause_display, set_pause_display, 0);
   if (pause_icon)
     pause_icon->hint = "gz's pause display at the top left while paused";
-  menu_item_t *button = menu_add_option(&m_frame_advance, "button", ARRAY_LEN(fa_button_names), fa_button_names,
-                                        get_fa_button, set_fa_button, 0);
-  if (button) {
-    button->hint = "the button for frame advance (the game no longer sees it while it's on)";
-    button->log_label = "frame advance button";
-  }
   menu_end_group(&m_frame_advance);
   menu_add_return(&m_frame_advance);
 }
