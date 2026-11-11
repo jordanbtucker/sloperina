@@ -716,6 +716,21 @@ Each of these was tried and verified not to help:
   physics record), the game's own debug line and triangle shaders (collision view, stage 2), and the scene's
   managers (a Link state name, the exit Link is nearest to, the map's collision, the explored room after a warp).
 
+### Frame advance timing (1.1.1, emulator log, 11th November 2026)
+From the `fa step` / `fa run` diagnostic lines (one step = one frame let through by frame advance):
+- Each step is exactly one hook call, one `frame_counter` tick and one present.
+- The game reads the controller with `nn::hid::GetNpadStates(NpadFullKeyState, count 16)` (16 states of history;
+  hid's sampling number moves on about 17 per 60 Hz frame, so about 1 kHz), on more than one thread, and never
+  while frame advance holds the game.
+- Running in gameplay: two reads a frame, about 5 ms and 12 ms after the hook returns, the hook again at about
+  16 ms. In the quick-swap menu (world paused) and while frame advance holds the item menu open: one read.
+- With R held at a step (opening the quick-swap menu), the very next step already has one read: the menu's pause
+  took hold after one gameplay frame. The game's own pause is clock-timed (§9.1: the pause request comes about
+  60 ms after the pre request), so it's thought (not checked) that the paused time made it take hold at once.
+  **settings > frame advance > stop the clock** (gameclock.c) is the attempt to fix that.
+- main imports `nn::os::GetSystemTick`, `ConvertToTimeSpan`, `nn::time::StandardSteadyClock::now`, timer events and
+  `nn::vi::GetDisplayVsyncEvent`, among 94 clock-like imports.
+
 ## 9. Leads: pausing, debug leftovers, scene managers
 
 Found from outside the game (memory reads and test writes in Lichii, static analysis of main) and not used by

@@ -15,6 +15,7 @@
 #include "age.h"
 #include "cheats.h"
 #include "gamedata.h"
+#include "gameclock.h"
 #include "gamefont.h"
 #include "gameimage.h"
 #include "uishader.h"
@@ -272,6 +273,7 @@ static void fa_diag_let_go(fa_diag_kind_t kind)
 {
   input_reads_t discard;
   input_reads_take(&discard);
+  game_clock_reads_take();
   fa_diag.kind = kind;
   fa_diag.let_go_at = sys_tick();
   fa_diag.frame = frame_counter();
@@ -288,6 +290,7 @@ static void fa_diag_hook(void)
   uint64_t now = sys_tick();
   input_reads_t reads;
   input_reads_take(&reads);
+  uint32_t clock_reads = game_clock_reads_take();
   fa_diag_game_thread = input_thread();
   fa_diag_kind_t kind = fa_diag.kind;
   fa_diag.kind = FA_DIAG_NONE;
@@ -295,14 +298,14 @@ static void fa_diag_hook(void)
     return;
   double tick_ms = (double)sys_tick_freq() / 1000.0;
   vec3f_t pos;
-  char moved[64] = "link: ?";
+  char moved[64] = "link: ?"; /* not menu text */
   if (fa_diag.have_pos && link_drawn_pos(&pos)) {
     double dx = pos.x - fa_diag.pos.x, dy = pos.y - fa_diag.pos.y, dz = pos.z - fa_diag.pos.z;
-    snprintf(moved, sizeof(moved), "link moved %.4f (y %+.4f)", (double)hypotf((float)dx, (float)dz), dy);
+    snprintf(moved, sizeof(moved), "link moved %.4f (y %+.4f)", (double)hypotf((float)dx, (float)dz), dy); /* not menu text */
   }
   char when[112] = "";
   if (reads.calls)
-    snprintf(when, sizeof(when), " at +%.2f..+%.2f ms, styles %#x, count %u/%u, samples +%lld",
+    snprintf(when, sizeof(when), " at +%.2f..+%.2f ms, styles %#x, count %u/%u, samples +%lld", /* not menu text */
              (double)(reads.first_tick - fa_diag.let_go_at) / tick_ms,
              (double)(reads.last_tick - fa_diag.let_go_at) / tick_ms, (unsigned)reads.styles,
              (unsigned)reads.max_returned, (unsigned)reads.max_count,
@@ -311,15 +314,16 @@ static void fa_diag_hook(void)
   for (uint32_t i = 0; i < reads.n_threads && i < INPUT_READS_THREADS; i++)
     if (reads.threads[i] != fa_diag_game_thread)
       other_thread = true;
-  const char *what = kind == FA_DIAG_STEP ? "step" : kind == FA_DIAG_PAUSING ? "pausing" : "run";
+  const char *what = kind == FA_DIAG_STEP ? "step" : kind == FA_DIAG_PAUSING ? "pausing" : "run"; /* not menu text */
   char step[48] = "";
   if (kind == FA_DIAG_STEP)
-    snprintf(step, sizeof(step), " %u gave %#x%s%s", (unsigned)fa_diag.steps, (unsigned)fa_diag.buttons,
-             fa_diag.sticks[0] ? " +ls" : "", fa_diag.sticks[1] ? " +rs" : "");
-  log_printf("fa %s%s: %.2f ms, frames +%u, presents +%u, reads %u (forced %u, %s thread%s)%s, held reads %u, %s",
+    snprintf(step, sizeof(step), " %u gave %#x%s%s", (unsigned)fa_diag.steps, (unsigned)fa_diag.buttons, /* not menu text */
+             fa_diag.sticks[0] ? " +ls" : "", fa_diag.sticks[1] ? " +rs" : ""); /* not menu text */
+  log_printf("fa %s%s: %.2f ms, frames +%u, presents +%u, clock %u%s, reads %u (forced %u, %s thread%s)%s, held reads %u, %s",
              what, step, (double)(now - fa_diag.let_go_at) / tick_ms, (unsigned)(frame_counter() - fa_diag.frame),
-             (unsigned)(gfx_presents - fa_diag.presents), (unsigned)reads.calls, (unsigned)reads.forced,
-             other_thread ? "another" : "game's", reads.n_threads > 1 ? "s" : "", when,
+             (unsigned)(gfx_presents - fa_diag.presents), (unsigned)clock_reads, game_clock_stops ? " (stopping)" : "", /* not menu text */
+             (unsigned)reads.calls, (unsigned)reads.forced,
+             other_thread ? "another" : "game's", reads.n_threads > 1 ? "s" : "", when, /* not menu text */
              (unsigned)fa_diag.held_reads, moved);
   fa_diag.held_reads = 0;
 }
@@ -331,6 +335,7 @@ static fa_diag_kind_t fa_diag_release; /* why fa_hold_game let the game go */
 static void fa_hold_game(void)
 {
   fa_diag_release = FA_DIAG_RUNNING;
+  game_clock_hold(); /* its clock stands still too */
   input_reads_t reads;
   input_reads_take(&reads);
   uint32_t presents_at_start = gfx_presents;
@@ -395,6 +400,7 @@ static void fa_hold_game(void)
                  (unsigned)(gfx_presents - presents_at_start));
     }
   }
+  game_clock_release();
   input_reads_take(&reads);
   fa_diag.held_reads = reads.calls;
   if (fa_diag_release == FA_DIAG_STEP)
@@ -609,6 +615,10 @@ __attribute__((used)) void ootgz_module_init(void)
     log_raw(error);
   error = input_hook_game(z64hd_main);
   log_raw(error ? "input hook failed" : "input hook installed");
+  if (error)
+    log_raw(error);
+  error = game_clock_hook(z64hd_main);
+  log_raw(error ? "clock hook failed" : "clock hook installed");
   if (error)
     log_raw(error);
 }

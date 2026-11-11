@@ -19,6 +19,7 @@
 
 #include "cheats.h"
 #include "enemyhp.h"
+#include "gameclock.h"
 #include "gfx.h"
 #include "sys.h"
 #include "warp.h"
@@ -72,6 +73,7 @@ typedef struct {
   int32_t settings_version;
   int32_t frame_advance;
   int32_t frame_advance_in_pause;
+  int32_t frame_advance_stops_clock;
   int32_t pause_display;
   int32_t frame_advance_button;
   int32_t menu_scale;
@@ -142,6 +144,7 @@ static snapshot_t take_snapshot(void)
   s.settings_version = SETTINGS_VERSION;
   s.frame_advance = frame_advance;
   s.frame_advance_in_pause = frame_advance_in_pause;
+  s.frame_advance_stops_clock = game_clock_stops;
   s.pause_display = pause_display;
   s.frame_advance_button = frame_advance_button;
   snprintf(s.lang, sizeof(s.lang), "%s", lang_code());
@@ -204,6 +207,7 @@ static void apply_snapshot(const snapshot_t *s)
     lang_select_code(s->lang);
   frame_advance = s->frame_advance != 0;
   frame_advance_in_pause = s->frame_advance_in_pause != 0;
+  game_clock_stops = s->frame_advance_stops_clock != 0;
   pause_display = s->pause_display != 0;
   frame_advance_button = s->frame_advance_button == 1;
 
@@ -300,6 +304,7 @@ static const struct { const char *key; size_t field_offset; } int_keys[] = {
   INT_KEY("menu_size", menu_scale),
   INT_KEY("frame_advance", frame_advance),
   INT_KEY("frame_advance_in_pause", frame_advance_in_pause),
+  INT_KEY("frame_advance_stops_clock", frame_advance_stops_clock),
   INT_KEY("pause_display", pause_display),
   INT_KEY("frame_advance_button", frame_advance_button),
   INT_KEY("input_display", input_display),
@@ -513,12 +518,12 @@ static void save_settings_file(const snapshot_t *s)
                    (int)s->enemy_hp);
   if (n < (int)sizeof(buf))
     n += snprintf(buf + n, sizeof(buf) - n,
-                  "language=%s\nframe_advance=%d\nframe_advance_in_pause=%d\nframe_advance_button=%d\npause_display=%d\n"
+                  "language=%s\nframe_advance=%d\nframe_advance_in_pause=%d\nframe_advance_stops_clock=%d\nframe_advance_button=%d\npause_display=%d\n"
                   "menu_size=%d\n"
                   "input_display=%d\ninput_display_background=%d\ninput_display_parts=%d\n"
                   "input_display_style=%d\ninput_display_size=%d\ninput_display_position=%d\n"
                   "input_display_x=%d\ninput_display_y=%d\nmenu_style=%d\nhide_in_game_menus=%d\n",
-                  s->lang, (int)s->frame_advance, (int)s->frame_advance_in_pause, (int)s->frame_advance_button, (int)s->pause_display,
+                  s->lang, (int)s->frame_advance, (int)s->frame_advance_in_pause, (int)s->frame_advance_stops_clock, (int)s->frame_advance_button, (int)s->pause_display,
                   (int)s->menu_scale, (int)s->input_display, (int)s->input_display_bg, (int)s->input_parts,
                   (int)s->input_style, (int)s->input_size, (int)s->input_position, (int)s->input_x,
                   (int)s->input_y, (int)s->menu_style, (int)s->hide_in_game_menus);

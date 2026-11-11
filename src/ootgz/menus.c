@@ -5,6 +5,7 @@
 
 #include "cheats.h"
 #include "data.h"
+#include "gameclock.h"
 #include "gamedata.h"
 #include "airwall.h"
 #include "enemyhp.h"
@@ -2368,6 +2369,16 @@ static void set_fa_in_pause(menu_item_t *it, bool on)
   frame_advance_in_pause = on;
 }
 
+static bool get_fa_stop_clock(menu_item_t *it)
+{
+  return game_clock_stops;
+}
+
+static void set_fa_stop_clock(menu_item_t *it, bool on)
+{
+  game_clock_stops = on;
+}
+
 static bool get_hide_in_game_menus(menu_item_t *it)
 {
   return hide_in_game_menus;
@@ -2400,7 +2411,7 @@ static void set_fa_button(menu_item_t *it, int button)
 
 static void build_frame_advance(void)
 {
-  menu_init(&m_frame_advance, "frame advance", 6);
+  menu_init(&m_frame_advance, "frame advance", 7);
   menu_add_heading(&m_frame_advance, "frame advance options");
   menu_item_t *enabled = menu_add_check(&m_frame_advance, "enabled", get_fa, set_fa, 0);
   if (enabled) {
@@ -2411,6 +2422,11 @@ static void build_frame_advance(void)
   if (in_pause) {
     in_pause->hint = "lets the button start frame advance in the game's pause screen (off: the game gets it)";
     in_pause->log_label = "frame advance in pause screen";
+  }
+  menu_item_t *stop_clock = menu_add_check(&m_frame_advance, "stop the clock", get_fa_stop_clock, set_fa_stop_clock, 0);
+  if (stop_clock) {
+    stop_clock->hint = "the game's clock stands still while paused: each frame let through is a frame's time";
+    stop_clock->log_label = "frame advance stops the clock";
   }
   menu_item_t *pause_icon = menu_add_check(&m_frame_advance, "pause icon", get_pause_display, set_pause_display, 0);
   if (pause_icon)
