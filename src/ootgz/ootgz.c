@@ -304,9 +304,12 @@ static void fa_hold_game(void)
   }
 }
 
+/* Frame advance's button (tap, hold, button + L3) is off for now, whatever the setting says. */
+#define FA_BUTTON_OFF 1
+
 static void fa_frame(void)
 {
-  if (!frame_advance) {
+  if (!frame_advance || FA_BUTTON_OFF) {
     fa_paused = false;
     fa_button_down = false;
     gfx_pause_icon = 0;
@@ -371,7 +374,10 @@ static void frame(void)
   enemyhp_frame(overlays_on_gpu);
   menus_research_frame();
   watches_frame(menu_current != 0);
-  levitate_frame(menu_current != 0);
+  levitate_frame(menu_current != 0); /* sets input_hide_from_game afresh: what's added to it comes after */
+  /* L3 is the shortcuts' button (L3 + X, L3 + B, L3 + L, L3 + R3): while it's held the game gets no buttons */
+  if (input_held() & BTN_LSTICK)
+    input_hide_from_game |= BUTTON_BITS;
   position_frame(menu_current != 0);
   divetest_frame(menu_current != 0);
   lock_frame();

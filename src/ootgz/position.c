@@ -152,9 +152,6 @@ static void settle_step(void)
 
 void position_frame(bool menu_open)
 {
-  /* While L3 is held the game doesn't get X or B, so L3 + X / L3 + B don't also press them in the game. */
-  if (input_held() & BTN_LSTICK)
-    input_hide_from_game |= BTN_X | BTN_B;
   if (!menu_open && input_combo(SAVE_COMBO))
     position_save();
   else if (!menu_open && input_combo(LOAD_COMBO))

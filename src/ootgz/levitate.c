@@ -886,12 +886,21 @@ static void protect_landing(bool menu_open)
   }
 }
 
-/* Turned off in settings: stop. (L3 no longer starts / stops it; that's gone for now.) */
+/* L3 + L: start / stop */
 static void handle_l3(bool menu_open)
 {
-  (void)menu_open;
-  if (!levitate_enabled)
+  if (!levitate_enabled) {
     drop();
+  } else if (!menu_open && input_combo(BTN_LSTICK | BTN_L)) {
+    if (floating) {
+      drop();
+      gfx_notice("levitate off");
+    } else {
+      floating = true;
+      quiet_search = false;
+      gfx_notice("levitate on");
+    }
+  }
 }
 
 /* Advance a running search. True while one runs: nothing else happens on those frames. */
