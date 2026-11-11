@@ -57,9 +57,9 @@ static uint32_t frames_run;
 
 /* --- frame advance ---------------------------------------------------------------------------
  * With it on (settings > frame advance), L + L3 (menu closed) pauses the game: this hook, on the game's
- * thread, holds it here, as a debugger's breakpoint would. While held, a tap of L3 lets one frame
- * through, holding L3 plays frames slowly, and L + L3 lets it run again. While the game runs, L3 alone
- * does nothing. The menu still opens (L + Plus) and works as usual. gz's pause icon shows at the top left.
+ * thread, holds it here, as a debugger's breakpoint would. While held, a tap of L (pressed and let go
+ * on its own) lets one frame through, holding L plays frames slowly, and L + L3 lets it run again. While
+ * the game runs, L alone does nothing. During slow play the game reads the controller as it is (not L). The menu still opens (L + Plus) and works as usual. gz's pause icon shows at the top left.
  * As in gz, everything else can be held or pressed meanwhile (the stick, A, ZL...): the frame let
  * through reads the controller as it is, plus what was buffered while paused (nothing pressed while L is
  * held: that's for the shortcuts).
@@ -81,18 +81,22 @@ static bool hud_hidden(void)
   return hide_in_game_menus && (gd_game_pausing() || gd_game_paused(0, 0));
 }
 
-/* While paused, L3 held (on its own) for FA_HOLD_MS advances a frame every FA_REPEAT_MS until it's let
+/* While paused, L held (on its own) for FA_HOLD_MS advances a frame every FA_REPEAT_MS until it's let
  * go. The wait leaves room for a tap that's a little long. */
 #define FA_HOLD_MS 400
 #define FA_REPEAT_MS 66
-#define FA_STEP_BUTTON BTN_LSTICK /* L3: a frame; L + L3: pause / run */
+#define FA_STEP_BUTTON BTN_L      /* L: a frame (held: slow play) */
+#define FA_TOGGLE_BUTTON BTN_LSTICK /* L + L3: pause / run */
+/* With L, these make a shortcut that works while paused (L + Plus, L + D-right, L + R + the d-pad,
+ * L + L3), so L isn't a tap; anything else can be held meanwhile, for the frame let through */
+#define FA_SHORTCUT_KEYS (BTN_PLUS | BTN_R | BTN_LSTICK | BTN_DUP | BTN_DDOWN | BTN_DLEFT | BTN_DRIGHT)
 
 /* While paused, how long to sleep between polls of the controller (about one 60 Hz frame). */
 #define FA_POLL_NS (16 * 1000 * 1000)
 
 static bool fa_paused;
-static bool fa_button_down;     /* L3 went down (on its own) and hasn't been let go yet */
-static bool fa_not_a_tap;       /* L came down while it was down */
+static bool fa_button_down;     /* L went down (on its own) and hasn't been let go yet */
+static bool fa_not_a_tap;       /* something else was pressed while it was down */
 static uint64_t fa_button_down_at;
 static bool fa_repeating;       /* held long enough that it's stepping frames on its own */
 static uint64_t fa_last_repeat_at;
@@ -100,9 +104,9 @@ static uint64_t fa_last_repeat_at;
 /* What frame advance's buttons did this frame. */
 typedef enum {
   FA_NOTHING = 0,
-  FA_TAP = 1,    /* L3 pressed and let go on its own, while paused */
+  FA_TAP = 1,    /* L pressed and let go on its own, while paused */
   FA_TOGGLE = 2, /* L + L3: pause, or run again */
-  FA_REPEAT = 3, /* L3 held while paused: another frame */
+  FA_REPEAT = 3, /* L held while paused: another frame */
 } fa_event_t;
 
 static fa_event_t fa_read_button(void)
@@ -116,23 +120,23 @@ static fa_event_t fa_read_button(void)
     fa_button_down = false;
     return FA_NOTHING;
   }
-  if (input_shortcut(false, FA_STEP_BUTTON)) {
-    fa_button_down = false; /* letting go of L3 afterwards isn't a tap */
+  if (input_shortcut(false, FA_TOGGLE_BUTTON)) {
+    fa_button_down = false; /* letting go of L afterwards isn't a tap */
     return FA_TOGGLE;
   }
-  if (!fa_paused) { /* L3 alone does nothing while the game runs */
+  if (!fa_paused) { /* L alone does nothing while the game runs */
     fa_button_down = false;
     return FA_NOTHING;
   }
-  if ((pressed & FA_STEP_BUTTON) && !(held & BTN_L)) {
+  if (pressed & FA_STEP_BUTTON) {
     fa_button_down = true;
-    fa_not_a_tap = false;
+    fa_not_a_tap = (held & FA_SHORTCUT_KEYS) != 0;
     fa_button_down_at = now;
     fa_repeating = false;
   }
   if (!fa_button_down)
     return FA_NOTHING;
-  if (held & BTN_L)
+  if (pressed & FA_SHORTCUT_KEYS)
     fa_not_a_tap = true;
 
   if (!(held & FA_STEP_BUTTON)) {
@@ -171,7 +175,7 @@ static bool menu_controls(void)
 }
 
 /* What's pressed while paused is buffered and given to the game on the frame that's let through:
- * every button pressed (not L3, nor anything while L is held), and each stick's last direction away
+ * every button pressed (nothing while L is held), and each stick's last direction away
  * from the middle. */
 #define FA_DEADZONE 6000
 #define BUTTON_BITS 0xFFFF /* the buttons, not the stick-direction bits above them */
@@ -187,7 +191,7 @@ static void fa_buffer_input(void)
   uint32_t held = input_held();
   if (held & BTN_L) /* L and what's pressed with it are the shortcuts', not the game's */
     return;
-  buffered_buttons |= held & ~FA_STEP_BUTTON & BUTTON_BITS;
+  buffered_buttons |= held & BUTTON_BITS;
 
   int32_t axes[4];
   input_sticks(&axes[0], &axes[1], &axes[2], &axes[3]);
@@ -233,7 +237,7 @@ static void fa_hold_game(void)
     input_update();
     /* L + L3 always runs again, even with the menu open: nothing is drawn while paused, so a menu
      * opened here can't be seen. Checked before the menu gets the input. */
-    if (input_shortcut(false, FA_STEP_BUTTON)) {
+    if (input_shortcut(false, FA_TOGGLE_BUTTON)) {
       if (menu_current)
         menu_close();
       fa_button_down = false;
@@ -282,12 +286,12 @@ static void fa_frame(void)
     fa_button_down = false;
     return;
   }
-  input_hide_from_game |= FA_STEP_BUTTON;
+  input_hide_from_game |= FA_STEP_BUTTON | FA_TOGGLE_BUTTON;
   if (!fa_paused)
     input_force_active = false;
   if (!fa_paused && fa_read_button() == FA_TOGGLE) {
     fa_paused = true;
-    gfx_notice("frame advance: L3 a frame, L + L3 to run");
+    gfx_notice("frame advance: L a frame, L + L3 to run");
     /* The game shows nothing new while it's held, so this frame is let through first, with the pause
      * icon on it: the screen shows the game is paused (and hasn't crashed). Held from the next one. */
     gfx_pause_icon = pause_display ? 1 : 0;
@@ -331,8 +335,9 @@ static void frame(void)
   menus_research_frame();
   watches_frame(menu_current != 0);
   levitate_frame(menu_current != 0); /* sets input_hide_from_game afresh: what's added to it comes after */
-  /* L is the shortcuts' button: while it's held the game gets no buttons (L included) */
-  if (input_held() & BTN_L)
+  /* L is the shortcuts' button: while it's held the game gets no buttons (L included), except during
+   * frame advance's slow play (L held while paused), where the game reads the controller (fa_frame hides L) */
+  if ((input_held() & BTN_L) && !fa_repeating)
     input_hide_from_game |= BUTTON_BITS;
   position_frame(menu_current != 0);
   divetest_frame(menu_current != 0);
