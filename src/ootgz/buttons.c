@@ -11,6 +11,8 @@
 #include "sys.h"
 
 #define BUTTON_BITS 0xFFFF /* the buttons, not the stick-direction bits above them */
+#define BINDABLE_BITS 0xFFFFFF /* a shortcut's own button can also be a stick direction (gz's C buttons) */
+#define N_NAMES 24
 #define DPAD_BITS (BTN_DLEFT | BTN_DUP | BTN_DRIGHT | BTN_DDOWN)
 
 binding_t command_bindings[CMD_COUNT];
@@ -46,28 +48,37 @@ static const char *const menu_button_keys[MB_COUNT] = { "select", "back", "minus
 static const char *const menu_button_labels[MB_COUNT] = { "select", "back", "-10", "+10" };
 
 /* by bit (input.h's BTN_*): settings.ini's names, the menu's, the game font's glyphs */
-static const char *const key_names[16] = {
+static const char *const key_names[N_NAMES] = {
   "A", "B", "X", "Y", "L3", "R3", "L", "R", "ZL", "ZR", "Plus", "Minus", "Left", "Up", "Right", "Down",
+  "LSLeft", "LSUp", "LSRight", "LSDown", "RSLeft", "RSUp", "RSRight", "RSDown",
 };
-static const char *const shown_names[16] = {
+static const char *const shown_names[N_NAMES] = {
   "A", "B", "X", "Y", "L3", "R3", "L", "R", "ZL", "ZR", "Plus", "Minus", "D-left", "D-up", "D-right", "D-down",
+  "LS-left", "LS-up", "LS-right", "LS-down", "RS-left", "RS-up", "RS-right", "RS-down",
 };
-static const uint32_t glyphs[16] = {
+/* (the font has a stick pushed down, not the other ways: those show the plain stick) */
+static const uint32_t glyphs[N_NAMES] = {
   GF_BTN_A, GF_BTN_B, GF_BTN_X, GF_BTN_Y, GF_LSTICK_PRESS, GF_RSTICK_PRESS, GF_BTN_L, GF_BTN_R,
   GF_BTN_ZL, GF_BTN_ZR, GF_PLUS, GF_MINUS, GF_DPAD_LEFT, GF_DPAD_UP, GF_DPAD_RIGHT, GF_DPAD_DOWN,
+  GF_LSTICK, GF_LSTICK, GF_LSTICK, GF_LSTICK_DOWN, GF_RSTICK, GF_RSTICK, GF_RSTICK, GF_RSTICK_DOWN,
 };
 
-/* one button's bit number, -1 if it isn't exactly one of the 16 buttons */
+/* one button's (or stick direction's) bit number, -1 if it isn't exactly one of them */
 static int bit_of(uint32_t button)
 {
-  if (!button || (button & (button - 1)) || !(button & BUTTON_BITS))
+  if (!button || (button & (button - 1)) || !(button & BINDABLE_BITS))
     return -1;
   return __builtin_ctz(button);
 }
 
+/* one of the 16 real buttons (the shortcut, layer and menu buttons can't be stick directions) */
+static bool is_button(uint32_t button)
+{
+  return bit_of(button) >= 0 && (button & BUTTON_BITS);
+}
+
 static uint32_t lowest_button(uint32_t buttons)
 {
-  buttons &= BUTTON_BITS;
   return buttons & -buttons;
 }
 
@@ -109,7 +120,7 @@ uint32_t button_from_name(const char *name, int len)
     name++, len--;
   while (len > 0 && (name[len - 1] == ' ' || name[len - 1] == '\t'))
     len--;
-  for (int bit = 0; bit < 16; bit++)
+  for (int bit = 0; bit < N_NAMES; bit++)
     if (same_name(name, key_names[bit], len) || same_name(name, shown_names[bit], len))
       return 1u << bit;
   return 0;
@@ -199,14 +210,14 @@ static bool usable_command(binding_t b)
 
 static bool usable_menu_button(uint32_t button)
 {
-  return bit_of(button) >= 0 && !(button & DPAD_BITS) && button != input_shortcut_button;
+  return is_button(button) && !(button & DPAD_BITS) && button != input_shortcut_button;
 }
 
 static bool same_binding(binding_t a, binding_t b) { return a.layer == b.layer && a.button == b.button; }
 
 void buttons_check(void)
 {
-  if (bit_of(input_shortcut_button) < 0 || bit_of(input_layer_button) < 0 ||
+  if (!is_button(input_shortcut_button) || !is_button(input_layer_button) ||
       input_shortcut_button == input_layer_button) {
     log_printf("buttons: shortcut / layer button unusable (%s, %s): back to %s, %s", button_name(input_shortcut_button),
                button_name(input_layer_button), button_name(DEFAULT_SHORTCUT), button_name(DEFAULT_LAYER));
@@ -301,7 +312,7 @@ static void move_commands_off(uint32_t button, uint32_t freed)
 void set_shortcut_button(uint32_t button)
 {
   uint32_t old = input_shortcut_button;
-  if (bit_of(button) < 0 || button == old)
+  if (!is_button(button) || button == old)
     return;
   if (button == input_layer_button) {
     input_layer_button = old;
@@ -317,7 +328,7 @@ void set_shortcut_button(uint32_t button)
 void set_layer_button(uint32_t button)
 {
   uint32_t old = input_layer_button;
-  if (bit_of(button) < 0 || button == old)
+  if (!is_button(button) || button == old)
     return;
   if (button == input_shortcut_button) {
     input_shortcut_button = old;
@@ -390,7 +401,7 @@ static void row_value(menu_item_t *it, char *buf, int len)
  * its own cancels */
 static bool capture_chord(menu_item_t *it)
 {
-  uint32_t pressed = input_pressed() & BUTTON_BITS, held = input_held();
+  uint32_t pressed = input_pressed() & BINDABLE_BITS, held = input_held();
   if (!pressed)
     return true;
   if (held & input_shortcut_button) {
@@ -410,7 +421,7 @@ static bool capture_chord(menu_item_t *it)
 /* a single button: the next one pressed (menu buttons: not the d-pad, nor the shortcut button) */
 static bool capture_button(menu_item_t *it)
 {
-  uint32_t button = lowest_button(input_pressed());
+  uint32_t button = lowest_button(input_pressed() & BUTTON_BITS);
   if (!button)
     return true;
   int index = ROW_INDEX(it->data);

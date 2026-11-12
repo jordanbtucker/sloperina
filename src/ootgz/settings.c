@@ -11,7 +11,7 @@
  *   settings_version=<n> (SETTINGS_VERSION when saved: what settings_load has updated the file for)
  *   shortcut_button=L   layer_button=R   bind_<command>=L+Down or L+R+Down   menu_<button>=A
  *   slow_play_delay=200..1000 (settings > buttons; names as buttons.c's: A B X Y L3 R3 L R ZL ZR Plus Minus
- *   Left Up Right Down)
+ *   Left Up Right Down; a shortcut's own button also LSLeft..LSDown, RSLeft..RSDown)
  *
  * (save_settings_file writes every key; parse_line reads them.)
  *
