@@ -11,7 +11,7 @@
  *   settings_version=<n> (SETTINGS_VERSION when saved: what settings_load has updated the file for)
  *   shortcut_button=None|L   frame_advance_button=Shortcut|<button>   bind_<command>=L+Down or R+A+Left (up
  *   to 3, the last one pressed last)   menu_back=B   menu_back_other=R+Left|None   menu_select=A
- *   menu_minus_10=ZL   menu_plus_10=ZR   menu_by_10=buttons|select   slow_play_delay=200..1000
+ *   menu_minus_10=ZL or L+Left   menu_plus_10=ZR   slow_play_delay=200..1000
  *   (settings > buttons; names as buttons.c's: A B X Y L3 R3 L R ZL ZR Plus Minus Left Up Right Down, and
  *   in combos LSLeft..LSDown, RSLeft..RSDown)
  *
@@ -111,7 +111,6 @@ typedef struct {
   int32_t frame_advance_button; /* 0: the shortcut button */
   int32_t bind_held[CMD_COUNT], bind_button[CMD_COUNT];
   int32_t menu_buttons[MB_COUNT];
-  int32_t by_10_with_select;
   int32_t slow_play_delay;
 } snapshot_t;
 
@@ -179,7 +178,6 @@ static snapshot_t take_snapshot(void)
   s.hide_in_game_menus = hide_in_game_menus;
   s.shortcut_button = (int32_t)input_shortcut_button;
   s.frame_advance_button = (int32_t)frame_advance_button_setting;
-  s.by_10_with_select = by_10_with_select;
   for (int c = 0; c < CMD_COUNT; c++) {
     s.bind_held[c] = (int32_t)command_bindings[c].held;
     s.bind_button[c] = (int32_t)command_bindings[c].button;
@@ -265,7 +263,6 @@ static void apply_snapshot(const snapshot_t *s)
 
   input_shortcut_button = (uint32_t)s->shortcut_button;
   frame_advance_button_setting = (uint32_t)s->frame_advance_button;
-  by_10_with_select = s->by_10_with_select != 0;
   for (int c = 0; c < CMD_COUNT; c++)
     command_bindings[c] = (binding_t){ (uint32_t)s->bind_held[c], (uint32_t)s->bind_button[c] };
   for (int b = 0; b < MB_COUNT; b++)
@@ -451,8 +448,6 @@ static void parse_line(const char *line, snapshot_t *s, bool *have_list)
   } else if (key_is(line, "frame_advance_button", &value)) {
     /* a button, or "Shortcut" (and files from before: 0 L, 1 R, both now the shortcut button) */
     s->frame_advance_button = (int32_t)button_from_name(value, (int)strlen(value));
-  } else if (key_is(line, "menu_by_10", &value)) {
-    s->by_10_with_select = value[0] == 's' || value[0] == 'S';
   } else if (parse_button_line(line, s)) {
   } else {
     for (size_t k = 0; k < N_INT_KEYS; k++) {
@@ -588,10 +583,9 @@ static void save_settings_file(const snapshot_t *s)
                   (int)s->input_style, (int)s->input_size, (int)s->input_position, (int)s->input_x,
                   (int)s->input_y, (int)s->menu_style, (int)s->hide_in_game_menus);
   if (n < (int)sizeof(buf))
-    n += snprintf(buf + n, sizeof(buf) - n, "shortcut_button=%s\nframe_advance_button=%s\nmenu_by_10=%s\n",
+    n += snprintf(buf + n, sizeof(buf) - n, "shortcut_button=%s\nframe_advance_button=%s\n",
                   s->shortcut_button ? button_key((uint32_t)s->shortcut_button) : "None",
-                  s->frame_advance_button ? button_key((uint32_t)s->frame_advance_button) : "Shortcut",
-                  s->by_10_with_select ? "select" : "buttons");
+                  s->frame_advance_button ? button_key((uint32_t)s->frame_advance_button) : "Shortcut");
   for (int c = 0; c < CMD_COUNT && n < (int)sizeof(buf); c++) {
     char combo[40];
     binding_key((binding_t){ (uint32_t)s->bind_held[c], (uint32_t)s->bind_button[c] }, combo, sizeof(combo));

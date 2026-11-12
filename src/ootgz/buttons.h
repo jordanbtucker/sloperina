@@ -6,9 +6,8 @@
  * - each shortcut: a combo of up to 3 buttons (a stick direction can be one), as in gz: it fires when
  *   all of them are held and the last one goes down, unless a bigger combo of the same group is held too
  *   (R + A + D-left beats R + D-left). A combo without the shortcut button reaches the game, as on master.
- * - the menu's back (a combo) and back (other) (a combo, or none)
- * - the menu's select / -10 / +10 (single buttons), and whether numbers go by 10 with -10 / +10 or with
- *   select held + d-left/right (master's)
+ * - the menu's select (a single button), back, back (alternate) (or none), number -10 / +10 (combos;
+ *   with select in them, select fills a number when let go, unless it changed it meanwhile)
  * - how long the frame advance button is held before slow play starts */
 #ifndef BUTTONS_H
 #define BUTTONS_H
@@ -28,11 +27,13 @@ typedef enum {
   CMD_LAG_RESET,
   CMD_JS_HEIGHT_RESET,
   CMD_MENU_BACK,     /* the menu's group from here: only while it's open */
-  CMD_MENU_BACK_OTHER, /* may be none */
+  CMD_MENU_BACK_OTHER, /* back (alternate): may be none */
+  CMD_NUMBER_MINUS_10, /* a number in the menu: by -10 / +10 (repeats while held) */
+  CMD_NUMBER_PLUS_10,
   CMD_COUNT
 } command_t;
 
-typedef enum { MB_SELECT, MB_MINUS_10, MB_PLUS_10, MB_COUNT } menu_button_t;
+typedef enum { MB_SELECT, MB_COUNT } menu_button_t;
 
 typedef struct {
   uint32_t held;   /* the combo's other buttons (BTN_* bits), held first */
@@ -42,7 +43,6 @@ typedef struct {
 extern binding_t command_bindings[CMD_COUNT];
 extern uint32_t menu_buttons[MB_COUNT];
 extern uint32_t frame_advance_button_setting; /* 0: the shortcut button */
-extern bool by_10_with_select;                /* numbers by 10: select held + d-left/right (else -10 / +10) */
 extern int32_t slow_play_delay_ms;
 #define SLOW_PLAY_DELAY_MIN 200
 #define SLOW_PLAY_DELAY_MAX 1000
@@ -55,6 +55,8 @@ uint32_t frame_advance_button(void);
 /* the command's combo went down this frame (none while the menu is capturing; the shortcuts, not the
  * menu's back, none during slow play) */
 bool command_pressed(command_t c);
+/* the same, or held long enough to repeat (menu navigation) */
+bool command_repeat(command_t c);
 
 /* names, as in the menu ("D-down") and in settings.ini ("Down"); "?" for none */
 const char *button_name(uint32_t button);

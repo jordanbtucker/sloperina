@@ -230,7 +230,7 @@ void menu_back(void)
 
 /* --- changing and activating items ----------------------------------------------------------- */
 
-#define NUMBER_BIG_STEP 10 /* the -10 / +10 menu buttons (settings > buttons) */
+#define NUMBER_BIG_STEP 10 /* the number -10 / +10 combos (settings > buttons) */
 
 /* gz's log: what a switch or checkbox is now, or the action taken (unless it logged something itself) */
 static void log_item(menu_item_t *item, uint32_t log_count_before)
@@ -359,44 +359,37 @@ static void activate(menu_item_t *item)
 
 /* --- input ----------------------------------------------------------------------------------- */
 
-/* settings > buttons > by 10 = select held (master's): select held makes d-left/right go by
- * NUMBER_BIG_STEP, so select's own press (fill) happens when it's let go, and only if the d-pad wasn't
- * used meanwhile. */
+/* Numbers: the number -10 / +10 combos (settings > buttons) change them by NUMBER_BIG_STEP. With select
+ * in one of them (the gz layout's L + d-left/right), select's own press (fill) happens when it's let go,
+ * and only if it wasn't used for a combo meanwhile. True if they used this frame's input. */
 static bool select_down_on_number, select_used_for_big_steps;
 
-static bool number_input_select_held(menu_item_t *item)
+static bool number_input(menu_item_t *item)
 {
   uint32_t select = menu_buttons[MB_SELECT];
-  bool select_held = (input_held() & select) != 0;
+  binding_t minus = command_bindings[CMD_NUMBER_MINUS_10], plus = command_bindings[CMD_NUMBER_PLUS_10];
+  bool select_in_combos = ((minus.held | minus.button | plus.held | plus.button) & select) != 0;
   if (input_pressed() & select) {
     select_down_on_number = true;
     select_used_for_big_steps = false;
   }
-  if (select_held && (input_repeat(BTN_DLEFT) || input_repeat(BTN_DRIGHT))) {
+  bool down = command_repeat(CMD_NUMBER_MINUS_10), up = command_repeat(CMD_NUMBER_PLUS_10);
+  if (down || up) {
     select_used_for_big_steps = true;
-    change(item, input_repeat(BTN_DLEFT) ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
+    change(item, down ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
     return true;
   }
-  if (!select_held && select_down_on_number) {
+  if (!select_in_combos) { /* select presses it at once, as on anything else */
+    select_down_on_number = false;
+    return false;
+  }
+  if (!(input_held() & select) && select_down_on_number) {
     select_down_on_number = false;
     if (!select_used_for_big_steps)
       activate(item);
     return true;
   }
   return (input_pressed() & select) != 0; /* just pressed: wait for it to be let go */
-}
-
-/* Numbers: the -10 / +10 buttons change them by NUMBER_BIG_STEP (or select held + d-left/right); true if
- * they used this frame's input */
-static bool number_input(menu_item_t *item)
-{
-  if (by_10_with_select)
-    return number_input_select_held(item);
-  if (input_repeat(menu_buttons[MB_MINUS_10]) || input_repeat(menu_buttons[MB_PLUS_10])) {
-    change(item, input_repeat(menu_buttons[MB_MINUS_10]) ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
-    return true;
-  }
-  return false;
 }
 
 /* a page of text: the page moves, the cursor stays on return (menu_draw keeps the scroll in range) */
