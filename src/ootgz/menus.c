@@ -20,6 +20,7 @@
 #include "link.h"
 #include "menu.h"
 #include "input.h"
+#include "buttons.h"
 #include "job.h"
 #include "pouch.h"
 #include "lang.h"
@@ -1523,7 +1524,7 @@ static bool move_panel(menu_item_t *it)
   if (gfx_custom_y[panel] >= 0 &&
       (gfx_custom_y[panel] - *y > WATCHES_ROUNDING || *y - gfx_custom_y[panel] > WATCHES_ROUNDING))
     *y = gfx_custom_y[panel];
-  if (input_pressed() & BTN_A) {
+  if (input_pressed() & menu_buttons[MB_SELECT]) {
     move_held = 0;
     gfx_logf("%s", movers[it->data].done);
     return false;
@@ -1867,7 +1868,7 @@ static bool custom_watch_edit(menu_item_t *it)
     custom_digit = custom_digit > CUSTOM_CANCEL ? custom_digit - 1 : CUSTOM_CANCEL;
   } else if (input_repeat(BTN_DRIGHT)) {
     custom_digit = custom_digit < CUSTOM_DIGITS - 1 ? custom_digit + 1 : CUSTOM_DIGITS - 1;
-  } else if (custom_digit == CUSTOM_CANCEL && (input_pressed() & BTN_A)) {
+  } else if (custom_digit == CUSTOM_CANCEL && (input_pressed() & menu_buttons[MB_SELECT])) {
     gfx_logf("custom watch cancelled");
     return false;
   } else if (custom_digit == CUSTOM_CANCEL) {
@@ -1878,7 +1879,7 @@ static bool custom_watch_edit(menu_item_t *it)
     /* the digit goes round, f <-> 0, without carrying into the next */
     uintptr_t digit = ((custom_addr >> shift & 0xF) + (uintptr_t)(dir + 16)) & 0xF;
     custom_addr = (custom_addr & ~((uintptr_t)0xF << shift)) | digit << shift;
-  } else if (input_pressed() & BTN_A) {
+  } else if (input_pressed() & menu_buttons[MB_SELECT]) {
     if (watch_add_memory(custom_addr, custom_type))
       gfx_logf("added watch %0*lx", CUSTOM_DIGITS, (unsigned long)custom_addr);
     else
@@ -2152,7 +2153,7 @@ static void build_scene(void)
 
 /* --- settings --------------------------------------------------------------------------------- */
 
-static menu_t m_settings, m_input_display, m_levitate, m_frame_advance;
+static menu_t m_settings, m_input_display, m_levitate, m_frame_advance, m_buttons;
 
 /* menu settings */
 #define OPACITY_STEP 10 /* percent per choice */
@@ -2473,7 +2474,7 @@ static void build_levitate(void)
 
 static void build_settings(void)
 {
-  menu_init(&m_settings, "settings", 12);
+  menu_init(&m_settings, "settings", 13);
   menu_add_heading(&m_settings, "menu settings");
   menu_item_t *language = menu_add_option(&m_settings, "language", 1, lang_names(), get_lang, set_lang, 0);
   if (language)
@@ -2494,12 +2495,14 @@ static void build_settings(void)
     hide->hint = "no watches, input display or log over the game's pause screen and map";
   menu_end_group(&m_settings);
   menu_add_heading(&m_settings, "other settings");
+  menu_add_submenu(&m_settings, "buttons", &m_buttons);
   menu_add_submenu(&m_settings, "input display", &m_input_display);
   menu_add_submenu(&m_settings, "levitate", &m_levitate);
   menu_add_submenu(&m_settings, "frame advance", &m_frame_advance);
   menu_end_group(&m_settings);
   menu_add_return(&m_settings);
 
+  buttons_build_menu(&m_buttons);
   build_frame_advance();
   build_input_display();
   build_levitate();

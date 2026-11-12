@@ -20,6 +20,7 @@
 #include "uishader.h"
 #include "gfx.h"
 #include "input.h"
+#include "buttons.h"
 #include "job.h"
 #include "link.h"
 #include "menu.h"
@@ -52,8 +53,6 @@ typedef uint64_t (*gd_unlock_t)(void *lock);
 static bool started;
 static uint32_t frames_run;
 
-#define MENU_BUTTON BTN_PLUS /* L + Plus: open / close */
-#define BACK_BUTTON BTN_B    /* up one level; closes at the top */
 
 /* --- frame advance ---------------------------------------------------------------------------
  * With it on (settings > frame advance), L + L3 (menu closed) pauses the game: this hook, on the game's
@@ -83,11 +82,10 @@ static bool hud_hidden(void)
 
 /* While paused, L held (on its own) for FA_HOLD_MS advances a frame every FA_REPEAT_MS until it's let
  * go. The wait leaves room for a tap that's a little long. */
-#define FA_HOLD_MS 400
+#define FA_HOLD_MS slow_play_delay_ms /* settings > buttons */
 #define FA_REPEAT_MS 66
 #define BUTTON_BITS 0xFFFF /* the buttons, not the stick-direction bits above them */
-#define FA_STEP_BUTTON BTN_L      /* L: a frame (held: slow play) */
-#define FA_TOGGLE_BUTTON BTN_LSTICK /* L + L3: pause / run */
+#define FA_STEP_BUTTON input_shortcut_button /* L: a frame (held: slow play); settings > buttons */
 
 
 /* While paused, how long to sleep between polls of the controller (about one 60 Hz frame). */
@@ -129,7 +127,7 @@ static fa_event_t fa_read_button_now(void)
     fa_button_down = false;
     return FA_NOTHING;
   }
-  if (input_shortcut(false, FA_TOGGLE_BUTTON)) {
+  if (command_pressed(CMD_FRAME_ADVANCE)) {
     fa_button_down = false; /* letting go of L afterwards isn't a tap */
     return FA_TOGGLE;
   }
@@ -169,11 +167,13 @@ static fa_event_t fa_read_button_now(void)
 /* Opens, closes and drives the menu. Returns true if the input was the menu's. */
 static bool menu_controls(void)
 {
-  if (!menu_current && input_shortcut(false, MENU_BUTTON))
+  if (menu_capturing()) { /* settings > buttons waiting for a button: it gets them all */
+    menu_input();
+  } else if (!menu_current && command_pressed(CMD_MENU))
     menu_open(&menu_root);
-  else if (menu_current && input_shortcut(false, MENU_BUTTON))
+  else if (menu_current && command_pressed(CMD_MENU))
     menu_close(); /* the open shortcut toggles it */
-  else if (menu_current && (input_pressed() & BACK_BUTTON))
+  else if (menu_current && (input_pressed() & menu_buttons[MB_BACK]))
     menu_back();
   else if (menu_current) {
     watches_sync();
@@ -197,7 +197,7 @@ static void fa_buffer_input(void)
   if (menu_current) /* what's pressed for the menu isn't for the game */
     return;
   uint32_t held = input_held();
-  if (held & BTN_L) /* L and what's pressed with it are the shortcuts', not the game's */
+  if (held & input_shortcut_button) /* L and what's pressed with it are the shortcuts', not the game's */
     return;
   buffered_buttons |= held & BUTTON_BITS;
 
@@ -245,7 +245,7 @@ static void fa_hold_game(void)
     input_update();
     /* L + L3 always runs again, even with the menu open: nothing is drawn while paused, so a menu
      * opened here can't be seen. Checked before the menu gets the input. */
-    if (input_shortcut(false, FA_TOGGLE_BUTTON)) {
+    if (command_pressed(CMD_FRAME_ADVANCE)) {
       if (menu_current)
         menu_close();
       fa_button_down = false;
@@ -296,12 +296,16 @@ static void fa_frame(void)
     fa_button_down = false;
     return;
   }
-  input_hide_from_game |= FA_STEP_BUTTON | FA_TOGGLE_BUTTON;
+  input_hide_from_game |= FA_STEP_BUTTON;
   if (!fa_paused)
     input_force_active = false;
   if (!fa_paused && fa_read_button() == FA_TOGGLE) {
     fa_paused = true;
-    gfx_notice("frame advance: L a frame, L + L3 to run");
+    static char notice[80];
+    char toggle[48];
+    command_chord_text(CMD_FRAME_ADVANCE, toggle, sizeof(toggle));
+    snprintf(notice, sizeof(notice), "frame advance: %s a frame, %s to run", button_name(input_shortcut_button), toggle);
+    gfx_notice(notice);
     /* The game shows nothing new while it's held, so this frame is let through first, with the pause
      * icon on it: the screen shows the game is paused (and hasn't crashed). Held from the next one. */
     gfx_pause_icon = pause_display ? 1 : 0;
@@ -315,6 +319,7 @@ static void fa_frame(void)
 
 static void first_frame(void)
 {
+  buttons_defaults(); /* before settings_load: what a file without the buttons gets */
   menus_build();
   settings_load();
   gamefont_load(); /* the game's type for the panels (nativeui.c); gz's pixel font if it can't */

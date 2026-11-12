@@ -34,6 +34,7 @@
 #include "gamedata.h"
 #include "gfx.h"
 #include "input.h"
+#include "buttons.h"
 #include "link.h"
 #include "sys.h"
 #include "z64hd.h"
@@ -891,7 +892,7 @@ static void handle_l3(bool menu_open)
 {
   if (!levitate_enabled) {
     drop();
-  } else if (!menu_open && input_shortcut(false, BTN_DLEFT)) {
+  } else if (!menu_open && command_pressed(CMD_LEVITATE)) {
     if (floating) {
       drop();
       gfx_notice("levitate off");

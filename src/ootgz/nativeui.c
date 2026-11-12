@@ -19,6 +19,8 @@
 
 #include "font.h"
 #include "gamefont.h"
+#include "buttons.h"
+#include "input.h"
 #include "gameimage.h"
 #include "gpuui.h"
 #include "lang.h"
@@ -1811,8 +1813,8 @@ static const gfx_panel_t *measured_panel;
 static uint32_t measured_hash;
 static float measured_value_right;
 
-/* the controls at the menu's foot, from x: L select, R + d-left return, R + right stick down close; drawn
- * or only measured; returns where they end */
+/* the controls at the menu's foot, from x, as set in settings > buttons: select, return, close (the open
+ * shortcut); drawn or only measured; returns where they end */
 static float draw_controls(mrow_t *r, float x, bool draw)
 {
   int text_h = (int)(row_fp[GFX_ROW_HINT].text * fp_px + 0.5f);
@@ -1820,8 +1822,12 @@ static float draw_controls(mrow_t *r, float x, bool draw)
   r->em = gamefont_em_for_height(GF_REGULAR, text_h);
   float cap = cap_height(GF_REGULAR, r->em);
   r->baseline = (int)((r->h + cap) / 2 + 0.5f);
-  static const struct { uint32_t first, second; const char *what; } controls[] = {
-    { GF_BTN_L, 0, "select" }, { GF_BTN_R, GF_DPAD_LEFT, "return" }, { GF_BTN_R, GF_RSTICK_DOWN, "close" },
+  binding_t close = command_bindings[CMD_MENU];
+  const struct { uint32_t glyphs[3]; const char *what; } controls[] = {
+    { { button_glyph_of(menu_buttons[MB_SELECT]) }, "select" },
+    { { button_glyph_of(menu_buttons[MB_BACK]) }, "return" },
+    { { button_glyph_of(input_shortcut_button), close.layer ? button_glyph_of(input_layer_button) : button_glyph_of(close.button),
+        close.layer ? button_glyph_of(close.button) : 0 }, "close" },
   };
   rgb_t dim = styles[GFX_DIM].colour, bright = styles[GFX_NORMAL].colour;
   float gap = r->em * 0.3f;
@@ -1832,13 +1838,13 @@ static float draw_controls(mrow_t *r, float x, bool draw)
     if (draw)
       draw_run(what, n, GF_REGULAR, r->em, (int)(x * 64), r->baseline, dim);
     x += gamefont_measure(GF_REGULAR, r->em, what, n) / 64.0f + gap;
-    x += button_glyph(r, controls[i].first, x, draw, bright);
-    if (controls[i].second) {
+    x += button_glyph(r, controls[i].glyphs[0], x, draw, bright);
+    for (int g = 1; g < 3 && controls[i].glyphs[g]; g++) {
       x += gap;
       if (draw)
         draw_run("+", 1, GF_REGULAR, r->em, (int)(x * 64), r->baseline, dim);
       x += gamefont_measure(GF_REGULAR, r->em, "+", 1) / 64.0f + gap;
-      x += button_glyph(r, controls[i].second, x, draw, bright);
+      x += button_glyph(r, controls[i].glyphs[g], x, draw, bright);
     }
     end = x;
     x += r->em * 1.3f;

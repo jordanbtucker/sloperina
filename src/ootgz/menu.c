@@ -1,4 +1,5 @@
 #include "menu.h"
+#include "buttons.h"
 
 #include "gameimage.h"
 #include "gfx.h"
@@ -8,7 +9,7 @@
 
 /* --- the item pool --------------------------------------------------------------------------- */
 
-#define POOL_ITEMS 1400
+#define POOL_ITEMS 1430
 
 static menu_item_t pool[POOL_ITEMS];
 static int pool_used;
@@ -198,6 +199,7 @@ void menu_goto(menu_t *menu)
 }
 
 void menu_edit(menu_item_t *item) { menu_editing = item; }
+bool menu_capturing(void) { return menu_editing && menu_editing->capture; }
 
 void menu_open(menu_t *root)
 {
@@ -229,7 +231,7 @@ void menu_back(void)
 
 /* --- changing and activating items ----------------------------------------------------------- */
 
-#define NUMBER_BIG_STEP 10 /* ZL / ZR */
+#define NUMBER_BIG_STEP 10 /* the -10 / +10 menu buttons (settings > buttons) */
 
 /* gz's log: what a switch or checkbox is now, or the action taken (unless it logged something itself) */
 static void log_item(menu_item_t *item, uint32_t log_count_before)
@@ -361,8 +363,8 @@ static void activate(menu_item_t *item)
 /* Numbers: ZL / ZR change them by NUMBER_BIG_STEP; true if they did this frame */
 static bool number_input(menu_item_t *item)
 {
-  if (input_repeat(BTN_ZL) || input_repeat(BTN_ZR)) {
-    change(item, input_repeat(BTN_ZL) ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
+  if (input_repeat(menu_buttons[MB_MINUS_10]) || input_repeat(menu_buttons[MB_PLUS_10])) {
+    change(item, input_repeat(menu_buttons[MB_MINUS_10]) ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
     return true;
   }
   return false;
@@ -375,7 +377,7 @@ static void scroll_text_input(menu_t *menu, menu_item_t *item)
     menu->scroll--;
   else if (input_repeat(BTN_DDOWN))
     menu->scroll++;
-  else if (input_pressed() & BTN_A)
+  else if (input_pressed() & menu_buttons[MB_SELECT])
     activate(item);
 }
 
@@ -411,9 +413,9 @@ void menu_input(void)
     change(item, -1);
   } else if (input_repeat(BTN_DRIGHT)) {
     change(item, 1);
-  } else if (item->press && ((input_pressed() & BTN_A) || (item->press_repeat && input_repeat(BTN_A)))) {
+  } else if (item->press && ((input_pressed() & menu_buttons[MB_SELECT]) || (item->press_repeat && input_repeat(menu_buttons[MB_SELECT])))) {
     item->press(item, item->part < item->n_parts ? item->part : 0);
-  } else if (input_pressed() & BTN_A) {
+  } else if (input_pressed() & menu_buttons[MB_SELECT]) {
     activate(item);
   }
 }

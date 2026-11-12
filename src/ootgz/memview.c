@@ -15,6 +15,7 @@
 #include "gamedata.h"
 #include "gfx.h"
 #include "input.h"
+#include "buttons.h"
 #include "link.h"
 #include "lang.h"
 #include "sys.h"
@@ -165,7 +166,7 @@ static bool address_edit(menu_item_t *item)
     int shift = (ADDR_DIGITS - 1 - edit_pos) * DIGIT_BITS;
     int dir = input_repeat(BTN_DUP) ? 1 : -1;
     edit_addr = (uintptr_t)step_digit(edit_addr, shift, dir);
-  } else if (input_pressed() & BTN_A) {
+  } else if (input_pressed() & menu_buttons[MB_SELECT]) {
     show(edit_addr);
     gfx_logf("memory %0*lx", ADDR_DIGITS, (unsigned long)view_addr);
     return false;
@@ -282,7 +283,7 @@ static bool row_edit(menu_item_t *item)
     edit_pos = edit_pos < n_positions - 1 ? edit_pos + 1 : n_positions - 1;
   } else if (edit_pos > 0 && (input_repeat(BTN_DUP) || input_repeat(BTN_DDOWN))) {
     change_digit(row, input_repeat(BTN_DUP) ? 1 : -1);
-  } else if (input_pressed() & BTN_A) {
+  } else if (input_pressed() & menu_buttons[MB_SELECT]) {
     if (edit_pos == 0)
       watch_row(row);
     else if (view == V_PTR)

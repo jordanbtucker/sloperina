@@ -17,13 +17,12 @@
 #include "gamedata.h"
 #include "gfx.h"
 #include "input.h"
+#include "buttons.h"
 #include "levitate.h"
 #include "link.h"
 #include "lock.h"
 #include "sys.h"
 
-#define SAVE_BUTTON BTN_DUP   /* L + D-up */
-#define LOAD_BUTTON BTN_DDOWN /* L + D-down */
 #define SETTLE 20       /* frames for a load to show: checked each frame, then given up */
 #define MAX_WRITES 4    /* written again every RETRY_EVERY frames until Link is there */
 #define RETRY_EVERY 3
@@ -152,9 +151,9 @@ static void settle_step(void)
 
 void position_frame(bool menu_open)
 {
-  if (!menu_open && input_shortcut(false, SAVE_BUTTON))
+  if (!menu_open && command_pressed(CMD_SAVE_POSITION))
     position_save();
-  else if (!menu_open && input_shortcut(false, LOAD_BUTTON))
+  else if (!menu_open && command_pressed(CMD_LOAD_POSITION))
     position_load();
 
   link_record_status_t st = link_record_status();

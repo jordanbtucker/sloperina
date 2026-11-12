@@ -1,6 +1,7 @@
 #include "input.h"
 
 #include "got.h"
+#include "menu.h"
 #include "sys.h"
 
 /* nn::hid state structs (Switch 1 layout: sampling number, buttons, two sticks, attributes;
@@ -131,9 +132,12 @@ bool input_combo(uint32_t mask)
 
 bool input_slow_play;
 
-bool input_shortcut(bool with_r, uint32_t button)
+uint32_t input_shortcut_button = BTN_L, input_layer_button = BTN_R;
+
+bool input_shortcut(bool layer, uint32_t button)
 {
-  if (input_slow_play || !(buttons_held & BTN_L) || ((buttons_held & BTN_R) != 0) != with_r)
+  if (input_slow_play || menu_capturing() || !(buttons_held & input_shortcut_button) ||
+      ((buttons_held & input_layer_button) != 0) != layer)
     return false;
   return (buttons_held & button) == button && (buttons_pressed & button);
 }
@@ -179,7 +183,7 @@ uint32_t input_force_buttons;
 bool input_force_sticks[2];
 int32_t input_force_stick[4];
 
-/* L and what's pressed with it are the practice ROM's: the game never sees L, nor, while L is held, the
+/* L (the shortcut button: input_shortcut_button) and what's pressed with it are the practice ROM's: the game never sees L, nor, while L is held, the
  * other buttons (but in slow play). A button that was down with L stays hidden until it's let go, so
  * letting go of L first (L + Plus, then Plus) doesn't hand the game a fresh press. States are newest
  * first: they're gone through oldest first. Only connected controllers count (the game reads every style,
@@ -194,14 +198,14 @@ static void hide_l_chords(void *states, int count)
       continue;
     if (input_slow_play) {
       held_with_l = 0;
-      state->buttons &= ~(uint64_t)BTN_L;
+      state->buttons &= ~(uint64_t)input_shortcut_button;
       continue;
     }
-    if (state->buttons & BTN_L)
+    if (state->buttons & input_shortcut_button)
       held_with_l |= state->buttons & 0xFFFF;
     else
       held_with_l &= state->buttons; /* let go: given back to the game from its next press */
-    state->buttons &= ~(held_with_l | BTN_L);
+    state->buttons &= ~(held_with_l | input_shortcut_button);
   }
 }
 

@@ -6,6 +6,7 @@
 #include "gamedata.h"
 #include "gfx.h"
 #include "input.h"
+#include "buttons.h"
 #include "lang.h"
 #include "link.h"
 #include "sys.h"
@@ -827,18 +828,18 @@ void watch_set_label(int index, const char *label)
 /* The shortcuts, while the menu is closed: L + D-right, and the rare ones on L + R + the d-pad */
 static void command_input(void)
 {
-  if (input_shortcut(true, BTN_DUP)) {
+  if (command_pressed(CMD_TIMER)) {
     timer_toggle();
     gfx_notice("timer started/stopped");
-  } else if (input_shortcut(true, BTN_DDOWN)) {
+  } else if (command_pressed(CMD_TIMER_RESET)) {
     timer_reset();
     gfx_notice("timer reset");
-  } else if (input_shortcut(true, BTN_DLEFT)) {
+  } else if (command_pressed(CMD_LAG_RESET)) {
     lag_reset();
     gfx_notice("lag counter reset");
-  } else if (input_shortcut(true, BTN_DRIGHT)) {
+  } else if (command_pressed(CMD_JS_HEIGHT_RESET)) {
     gfx_notice(js_height_reset() ? "JS Height reset" : "JS Height: Link not found");
-  } else if (input_shortcut(false, BTN_DRIGHT)) {
+  } else if (command_pressed(CMD_WATCHES)) {
     watches_shown = !watches_shown;
     gfx_notice(watches_shown ? "watches shown" : "watches hidden");
   }

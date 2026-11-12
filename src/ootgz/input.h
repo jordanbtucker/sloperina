@@ -21,10 +21,13 @@ uint32_t input_held(void);
 uint32_t input_pressed(void);      /* went down this frame */
 /* All of `mask` held and at least one of them pressed this frame. */
 bool     input_combo(uint32_t mask);
-/* The practice ROM's shortcuts: L + `button`, or L + R + `button` (with_r), with `button` pressed this
- * frame. L + button doesn't fire while R is held, so the two layers never overlap. None fire while
- * input_slow_play is set. */
-bool     input_shortcut(bool with_r, uint32_t button);
+/* The practice ROM's shortcuts (buttons.h): the shortcut button + `button`, or the shortcut button + the
+ * layer button + `button` (layer), with `button` pressed this frame. Without the layer, it doesn't fire
+ * while the layer button is held, so the two never overlap. None fire while input_slow_play is set, nor
+ * while the menu is capturing a button (settings > buttons). */
+bool     input_shortcut(bool layer, uint32_t button);
+/* the shortcut button (default L) and the layer button (default R): settings > buttons */
+extern uint32_t input_shortcut_button, input_layer_button;
 /* Pressed, or held long enough to repeat (menu navigation). */
 bool     input_repeat(uint32_t button);
 void     input_sticks(int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry);
@@ -35,9 +38,9 @@ int      input_controller(void);
 
 /* While true, the game sees no buttons or sticks. */
 extern bool input_block_game;
-/* L belongs to the practice ROM: the game never sees it, and while it's held the game sees no buttons,
- * checked on each of the game's reads. Except during frame advance's slow play (L held while paused):
- * then the game gets the other buttons, and no shortcuts fire. */
+/* The shortcut button (L) belongs to the practice ROM: the game never sees it, and while it's held the
+ * game sees no buttons, checked on each of the game's reads. Except during frame advance's slow play (it
+ * held while paused): then the game gets the other buttons, and no shortcuts fire. */
 extern bool input_slow_play;
 /* Buttons the game never sees (e.g. L3 while levitate is on). */
 extern uint32_t input_hide_from_game;

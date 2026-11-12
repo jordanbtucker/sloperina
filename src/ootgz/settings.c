@@ -9,6 +9,9 @@
  *   hide_in_game_menus=0|1 (no watches, input display or log while the game's pause screen or map is open)
  *   input_display_position=<gfx_corner_t>   input_display_x=, input_display_y= (custom: thousandths)
  *   settings_version=<n> (SETTINGS_VERSION when saved: what settings_load has updated the file for)
+ *   shortcut_button=L   layer_button=R   bind_<command>=L+Down or L+R+Down   menu_<button>=A
+ *   slow_play_delay=200..1000 (settings > buttons; names as buttons.c's: A B X Y L3 R3 L R ZL ZR Plus Minus
+ *   Left Up Right Down)
  *
  * (save_settings_file writes every key; parse_line reads them.)
  *
@@ -24,6 +27,8 @@
 #include "warp.h"
 #include "watches.h"
 #include "levitate.h"
+#include "buttons.h"
+#include "input.h"
 #include "airwall.h"
 
 #include "sdfs.h"
@@ -100,6 +105,11 @@ typedef struct {
   int32_t enemy_hp_xray;
   int32_t menu_style;
   int32_t hide_in_game_menus;
+  /* settings > buttons (buttons.h): BTN_* bits; 0 = unusable, back to its default (buttons_check) */
+  int32_t shortcut_button, layer_button;
+  int32_t bind_layer[CMD_COUNT], bind_button[CMD_COUNT];
+  int32_t menu_buttons[MB_COUNT];
+  int32_t slow_play_delay;
 } snapshot_t;
 
 static bool mounted;
@@ -165,6 +175,15 @@ static snapshot_t take_snapshot(void)
   s.enemy_hp_xray = enemy_hp_xray;
   s.menu_style = gfx_style;
   s.hide_in_game_menus = hide_in_game_menus;
+  s.shortcut_button = (int32_t)input_shortcut_button;
+  s.layer_button = (int32_t)input_layer_button;
+  for (int c = 0; c < CMD_COUNT; c++) {
+    s.bind_layer[c] = command_bindings[c].layer;
+    s.bind_button[c] = (int32_t)command_bindings[c].button;
+  }
+  for (int b = 0; b < MB_COUNT; b++)
+    s.menu_buttons[b] = (int32_t)menu_buttons[b];
+  s.slow_play_delay = slow_play_delay_ms;
   return s;
 }
 
@@ -241,6 +260,15 @@ static void apply_snapshot(const snapshot_t *s)
   airwalls_xray = s->airwalls_xray != 0;
   enemy_hp_shown = s->enemy_hp != 0;
   enemy_hp_xray = s->enemy_hp_xray != 0;
+
+  input_shortcut_button = (uint32_t)s->shortcut_button;
+  input_layer_button = (uint32_t)s->layer_button;
+  for (int c = 0; c < CMD_COUNT; c++)
+    command_bindings[c] = (binding_t){ s->bind_layer[c] != 0, (uint32_t)s->bind_button[c] };
+  for (int b = 0; b < MB_COUNT; b++)
+    menu_buttons[b] = (uint32_t)s->menu_buttons[b];
+  slow_play_delay_ms = s->slow_play_delay;
+  buttons_check(); /* anything unusable back to its default */
 }
 
 /* --- reading the file ------------------------------------------------------------------------- */
@@ -322,6 +350,7 @@ static const struct { const char *key; size_t field_offset; } int_keys[] = {
   INT_KEY("enemy_health_xray", enemy_hp_xray),
   INT_KEY("menu_style", menu_style),
   INT_KEY("hide_in_game_menus", hide_in_game_menus),
+  INT_KEY("slow_play_delay", slow_play_delay),
 };
 #define N_INT_KEYS (sizeof(int_keys) / sizeof(*int_keys))
 
@@ -372,6 +401,32 @@ static void parse_watch_label(const char *p, snapshot_t *s)
     snprintf(s->watch_labels[watch], sizeof(s->watch_labels[watch]), "%s", p + 1);
 }
 
+/* bind_<command>=L+Down, menu_<button>=A (buttons.h); false if the line is neither */
+static bool parse_button_line(const char *line, snapshot_t *s)
+{
+  char key[40];
+  const char *value;
+  for (int c = 0; c < CMD_COUNT; c++) {
+    snprintf(key, sizeof(key), "bind_%s", command_key((command_t)c));
+    if (key_is(line, key, &value)) {
+      binding_t b;
+      if (!command_chord_parse(value, &b))
+        b = (binding_t){ false, 0 }; /* unusable: buttons_check gives it its default */
+      s->bind_layer[c] = b.layer;
+      s->bind_button[c] = (int32_t)b.button;
+      return true;
+    }
+  }
+  for (int m = 0; m < MB_COUNT; m++) {
+    snprintf(key, sizeof(key), "menu_%s", menu_button_key((menu_button_t)m));
+    if (key_is(line, key, &value)) {
+      s->menu_buttons[m] = (int32_t)button_from_name(value, (int)strlen(value));
+      return true;
+    }
+  }
+  return false;
+}
+
 /* One line of the file into `s`; unknown keys are ignored. *have_list is set once a watch_list
  * line is seen, after which the old "watches" key is ignored. */
 static void parse_line(const char *line, snapshot_t *s, bool *have_list)
@@ -389,6 +444,11 @@ static void parse_line(const char *line, snapshot_t *s, bool *have_list)
     snprintf(s->lang, sizeof(s->lang), "%s", value);
   } else if (starts_with(line, WATCH_LABEL_KEY)) {
     parse_watch_label(line + sizeof(WATCH_LABEL_KEY) - 1, s);
+  } else if (key_is(line, "shortcut_button", &value)) {
+    s->shortcut_button = (int32_t)button_from_name(value, (int)strlen(value));
+  } else if (key_is(line, "layer_button", &value)) {
+    s->layer_button = (int32_t)button_from_name(value, (int)strlen(value));
+  } else if (parse_button_line(line, s)) {
   } else {
     for (size_t k = 0; k < N_INT_KEYS; k++) {
       if (key_is(line, int_keys[k].key, &value)) {
@@ -522,6 +582,23 @@ static void save_settings_file(const snapshot_t *s)
                   (int)s->menu_scale, (int)s->input_display, (int)s->input_display_bg, (int)s->input_parts,
                   (int)s->input_style, (int)s->input_size, (int)s->input_position, (int)s->input_x,
                   (int)s->input_y, (int)s->menu_style, (int)s->hide_in_game_menus);
+  if (n < (int)sizeof(buf))
+    n += snprintf(buf + n, sizeof(buf) - n, "shortcut_button=%s\nlayer_button=%s\n",
+                  button_key((uint32_t)s->shortcut_button), button_key((uint32_t)s->layer_button));
+  for (int c = 0; c < CMD_COUNT && n < (int)sizeof(buf); c++) {
+    if (s->bind_layer[c])
+      n += snprintf(buf + n, sizeof(buf) - n, "bind_%s=%s+%s+%s\n", command_key((command_t)c),
+                    button_key((uint32_t)s->shortcut_button), button_key((uint32_t)s->layer_button),
+                    button_key((uint32_t)s->bind_button[c]));
+    else
+      n += snprintf(buf + n, sizeof(buf) - n, "bind_%s=%s+%s\n", command_key((command_t)c),
+                    button_key((uint32_t)s->shortcut_button), button_key((uint32_t)s->bind_button[c]));
+  }
+  for (int m = 0; m < MB_COUNT && n < (int)sizeof(buf); m++)
+    n += snprintf(buf + n, sizeof(buf) - n, "menu_%s=%s\n", menu_button_key((menu_button_t)m),
+                  button_key((uint32_t)s->menu_buttons[m]));
+  if (n < (int)sizeof(buf))
+    n += snprintf(buf + n, sizeof(buf) - n, "slow_play_delay=%d\n", (int)s->slow_play_delay);
   for (int w = 0; w < W_COUNT && n < (int)sizeof(buf); w++)
     if (s->watch_labels[w][0])
       n += snprintf(buf + n, sizeof(buf) - n, WATCH_LABEL_KEY "%d=%s\n", w, s->watch_labels[w]);
