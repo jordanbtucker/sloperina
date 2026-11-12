@@ -210,6 +210,7 @@ static void hide_l_chords(void *states, int count)
  * rest: see input_slow_play). */
 static void filter_game_states(void *states, int count)
 {
+  hide_l_chords(states, count); /* first: it needs L as the controller sent it (frame advance hides L too) */
   for (int i = 0; (input_block_game || input_hide_from_game || input_force_active) && i < count; i++) {
     npad_state_t *state = (npad_state_t *)((char *)states + i * NPAD_STATE_SIZE);
     if (input_block_game) {
@@ -230,7 +231,6 @@ static void filter_game_states(void *states, int count)
     }
     state->buttons &= ~(uint64_t)input_hide_from_game;
   }
-  hide_l_chords(states, count);
 }
 
 /* hid_wrap_N: whatever slot N held before (hid_next), then filter_game_states */
