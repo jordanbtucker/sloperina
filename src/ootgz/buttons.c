@@ -1,5 +1,5 @@
 /* The practice ROM's buttons (buttons.h): the shortcut button, step frame's button, each
- * shortcut's combo, the menu's buttons, the slow play delay; set in settings > buttons and kept in
+ * shortcut's combo, the menu's buttons, the slow advance delay; set in settings > buttons and kept in
  * settings.ini as text ("R+A+Left"). */
 #include "buttons.h"
 
@@ -73,8 +73,8 @@ static const char *const command_setting_keys[CMD_COUNT] = {
   "menu_back", "menu_back_other", "menu_minus_10", "menu_plus_10",
 };
 static const char *const command_labels[CMD_COUNT] = {
-  "open / close menu", "load position", "save position", "pause / run", "levitate", "show / hide watches",
-  "timer start / stop", "timer reset", "lag counter reset", "JS height reset", "back", "back (alternate)",
+  "open / close menu", "load position", "save position", "pause / unpause", "levitate", "show / hide watches",
+  "timer start / stop", "timer reset", "lag counter reset", "JS height reset", "return", "return (alternate)",
   "number -10", "number +10",
 };
 static const char *const menu_button_keys[MB_COUNT] = { "select" };
@@ -433,7 +433,7 @@ void buttons_check(void)
   }
   if (slow_play_delay_ms < SLOW_PLAY_DELAY_MIN || slow_play_delay_ms > SLOW_PLAY_DELAY_MAX ||
       slow_play_delay_ms % SLOW_PLAY_DELAY_STEP) {
-    log_printf("buttons: slow play delay %d ms unusable: back to %d", (int)slow_play_delay_ms, DEFAULT_SLOW_PLAY_DELAY);
+    log_printf("buttons: slow advance delay %d ms unusable: back to %d", (int)slow_play_delay_ms, DEFAULT_SLOW_PLAY_DELAY);
     slow_play_delay_ms = DEFAULT_SLOW_PLAY_DELAY;
   }
 }
@@ -669,11 +669,11 @@ static void start_capture(menu_item_t *it)
 {
   int kind = ROW_KIND(it->data), index = ROW_INDEX(it->data);
   if (kind == ROW_COMMAND && index == CMD_MENU_BACK_OTHER)
-    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons, let go to save");
+    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons (the last one pressed last), let go to save");
   else if (kind == ROW_COMMAND && index == CMD_MENU_BACK)
-    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons, let go to save");
+    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons (the last one pressed last), let go to save");
   else if (kind == ROW_COMMAND)
-    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons, let go to save   %s alone: cancel",
+    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons (the last one pressed last), let go to save   %s alone: cancel",
              button_name(cancel_button()));
   else if (kind == ROW_MENU_BUTTON)
     snprintf(capture_hint, sizeof(capture_hint), "press the new button (not the d-pad or %s)",
@@ -763,15 +763,14 @@ static menu_item_t *capture_row(menu_t *m, const char *label, int data, bool com
   return it;
 }
 
-#define COMBO_HINT "select, then hold up to 3 buttons (the last one pressed last) and let go"
+#define COMBO_HINT "select, then hold up to 3 buttons and let go"
 
 void buttons_build_menu(menu_t *m)
 {
   menu_init(m, "buttons", 28);
   menu_item_t *shortcut = capture_row(m, "shortcut button", ROW(ROW_SHORTCUT, 0), false,
-              "Hold this button for shortcuts. While it's held, no buttons are passed to the game, so a "
-              "shortcut does nothing in the game. The shortcut button itself is never passed to the game. "
-              "None: all buttons are passed to the game. D-left/right: none.");
+                                      "hold for shortcuts: it, and anything pressed while it's held, is not passed "
+                                      "to the game; d-left/right: none");
   if (shortcut)
     shortcut->on_change = toggle_none;
   menu_add_heading(m, "shortcuts");
@@ -784,36 +783,35 @@ void buttons_build_menu(menu_t *m)
   menu_end_group(m);
   menu_add_heading(m, "frame advance");
   capture_row(m, command_labels[CMD_FRAME_ADVANCE], ROW(ROW_COMMAND, CMD_FRAME_ADVANCE), true,
-              "Pause the game for frame advance, or let it run again (frame advance on: settings > frame "
-              "advance). " COMBO_HINT);
+              "pause or unpause the game for frame advance (needs settings > frame advance > enabled)");
   capture_row(m, "step frame", ROW(ROW_FRAME_ADVANCE, 0), false,
-              "While frame advance has the game paused, tap to play one frame or hold to play slowly. This "
-              "button is not passed to the game while frame advance is on.");
-  menu_item_t *slow = menu_add_option(m, "slow play delay", SLOW_PLAY_CHOICES, 0, get_slow_play, set_slow_play, 0);
+              "while paused by frame advance: tap to advance one frame, hold to advance frames slowly; not passed "
+              "to the game while frame advance is on");
+  menu_item_t *slow = menu_add_option(m, "slow advance delay", SLOW_PLAY_CHOICES, 0, get_slow_play, set_slow_play, 0);
   if (slow) {
     slow->choice_text = slow_play_text;
-    slow->hint = "how long step frame is held before slow play starts";
+    slow->hint = "how long step frame is held before frames advance slowly";
   }
   menu_end_group(m);
   menu_add_heading(m, "menu buttons");
   capture_row(m, menu_button_labels[MB_SELECT], ROW(ROW_MENU_BUTTON, MB_SELECT), false,
               "select, then press the new button");
-  capture_row(m, command_labels[CMD_MENU_BACK], ROW(ROW_COMMAND, CMD_MENU_BACK), true, COMBO_HINT);
+  capture_row(m, command_labels[CMD_MENU_BACK], ROW(ROW_COMMAND, CMD_MENU_BACK), true,
+              "returns to the previous page; on the first page, closes the menu");
   menu_item_t *alternate = capture_row(m, command_labels[CMD_MENU_BACK_OTHER], ROW(ROW_COMMAND, CMD_MENU_BACK_OTHER),
-                                       true, "A second combo that goes back. D-left/right: none.");
+                                       true, "another combo that returns to the previous page; d-left/right: none");
   if (alternate)
     alternate->on_change = toggle_none;
   capture_row(m, command_labels[CMD_NUMBER_MINUS_10], ROW(ROW_COMMAND, CMD_NUMBER_MINUS_10), true,
-              "On a number: take 10 off. With select in the combo, select alone still fills the number. " COMBO_HINT);
+              "lowers the selected number by 10");
   capture_row(m, command_labels[CMD_NUMBER_PLUS_10], ROW(ROW_COMMAND, CMD_NUMBER_PLUS_10), true,
-              "On a number: add 10. With select in the combo, select alone still fills the number. " COMBO_HINT);
+              "raises the selected number by 10");
   menu_end_group(m);
   menu_item_t *gz = menu_add_action(m, "use gz layout (default)", act_gz, 0);
   if (gz)
-    gz->hint = "R for shortcuts, L for frame advance, L to select, as in gz. All buttons are passed to the game.";
+    gz->hint = "R for shortcuts, L for frame advance and select, as in gz; all buttons are passed to the game";
   menu_item_t *remake = menu_add_action(m, "use remake layout", act_remake, 0);
   if (remake)
-    remake->hint = "L for shortcuts, and L is not passed to the game, so R stays free for quick select. A selects, "
-                   "B goes back.";
+    remake->hint = "L for shortcuts and not passed to the game, so R stays free for quick select; A selects, B returns";
   menu_add_return(m);
 }

@@ -252,7 +252,7 @@ static void fa_hold_game(void)
       input_slow_play = false;
       fa_paused = false;
       gfx_pause_icon = 0;
-      gfx_notice("frame advance: running");
+      gfx_notice("frame advance: unpaused");
       break;
     }
     menu_controls();
@@ -303,7 +303,7 @@ static void fa_frame(void)
     static char notice[80];
     char toggle[48];
     binding_text(command_bindings[CMD_FRAME_ADVANCE], toggle, sizeof(toggle));
-    snprintf(notice, sizeof(notice), "frame advance: %s a frame, %s to run", button_name(FA_STEP_BUTTON), toggle);
+    snprintf(notice, sizeof(notice), "frame advance: %s a frame, %s to unpause", button_name(FA_STEP_BUTTON), toggle);
     gfx_notice(notice);
     /* The game shows nothing new while it's held, so this frame is let through first, with the pause
      * icon on it: the screen shows the game is paused (and hasn't crashed). Held from the next one. */
