@@ -55,10 +55,10 @@ static uint32_t frames_run;
 
 
 /* --- frame advance ---------------------------------------------------------------------------
- * With it on (settings > frame advance), L + L3 (menu closed) pauses the game: this hook, on the game's
- * thread, holds it here, as a debugger's breakpoint would. While held, a tap of L (pressed and let go
- * on its own) lets one frame through, holding L plays frames slowly, and L + L3 lets it run again. While
- * the game runs, L alone does nothing. During slow play the game reads the controller as it is (not L). The menu still opens (L + Plus) and works as usual. gz's pause icon shows at the top left.
+ * With it on (settings > frame advance), pause (menu closed; the gz preset: a tap of L, as on master; the
+ * remake preset: L + L3) pauses the game: this hook, on the game's thread, holds it here, as a debugger's
+ * breakpoint would. While held, a tap of L (step frame: pressed and let go on its own) lets one frame
+ * through, holding L plays frames slowly, and unpause (L + L3) lets it run again. During slow play the game reads the controller as it is (not L). The menu still opens (L + Plus) and works as usual. gz's pause icon shows at the top left.
  * As in gz, everything else can be held or pressed meanwhile (the stick, A, ZL...): the frame let
  * through reads the controller as it is, plus what was buffered while paused (nothing pressed while L is
  * held: that's for the shortcuts).
@@ -96,12 +96,19 @@ static bool fa_not_a_tap;       /* something else was pressed while it was down 
 static uint64_t fa_button_down_at;
 static bool fa_repeating;       /* held long enough that it's stepping frames on its own */
 static uint64_t fa_last_repeat_at;
+/* The menu uses the button too (L selects; a warp closes the menu on the same press). While the menu
+ * is open, on the frame it closes, until the button is let go and for FA_AFTER_MENU_MS after, a tap
+ * doesn't pause (as on master). */
+#define FA_AFTER_MENU_MS 250
+static bool fa_menu_was_open; /* the menu was open at the start of this frame */
+static bool fa_blocked_after_menu;
+static uint64_t fa_menu_closed_at;
 
 /* What frame advance's buttons did this frame. */
 typedef enum {
   FA_NOTHING = 0,
   FA_TAP = 1,    /* L pressed and let go on its own, while paused */
-  FA_TOGGLE = 2, /* L + L3: pause, or run again */
+  FA_TOGGLE = 2, /* pause (a tap of L, or L + L3), or unpause */
   FA_REPEAT = 3, /* L held while paused: another frame */
 } fa_event_t;
 
@@ -122,17 +129,27 @@ static fa_event_t fa_read_button_now(void)
   uint64_t ticks_per_ms = sys_tick_freq() / 1000;
   uint64_t now = sys_tick();
 
-  if (menu_current) { /* the menu's open: no taps (L + L3 still runs again, in fa_hold_game) */
+  if (menu_current || fa_menu_was_open) { /* the menu's: no taps (unpause still works, in fa_hold_game) */
     fa_button_down = false;
+    fa_blocked_after_menu = true;
+    fa_menu_closed_at = now;
     return FA_NOTHING;
   }
-  if (command_pressed(CMD_FRAME_ADVANCE)) {
+  /* pause is a tap of step frame's button when it's that button alone (the gz preset, as on master) */
+  binding_t pause = command_bindings[CMD_PAUSE];
+  bool pause_is_tap = !pause.held && pause.button == FA_STEP_BUTTON;
+  if (!fa_paused && !pause_is_tap) {
+    fa_button_down = false;
+    return command_pressed(CMD_PAUSE) ? FA_TOGGLE : FA_NOTHING;
+  }
+  if (fa_paused && command_pressed(CMD_UNPAUSE)) {
     fa_button_down = false; /* letting go of L afterwards isn't a tap */
     return FA_TOGGLE;
   }
-  if (!fa_paused) { /* L alone does nothing while the game runs */
-    fa_button_down = false;
-    return FA_NOTHING;
+  if (!fa_paused && fa_blocked_after_menu) {
+    if ((held & FA_STEP_BUTTON) || now - fa_menu_closed_at < FA_AFTER_MENU_MS * ticks_per_ms)
+      return FA_NOTHING;
+    fa_blocked_after_menu = false;
   }
   if (pressed & FA_STEP_BUTTON) {
     fa_button_down = true;
@@ -149,8 +166,10 @@ static fa_event_t fa_read_button_now(void)
     bool tap = !fa_not_a_tap && !fa_repeating; /* a hold already advanced: no extra frame */
     fa_button_down = false;
     fa_repeating = false;
-    return tap ? FA_TAP : FA_NOTHING;
+    return !tap ? FA_NOTHING : fa_paused ? FA_TAP : FA_TOGGLE;
   }
+  if (!fa_paused) /* held while the game runs: only a tap pauses */
+    return FA_NOTHING;
 
   /* Held: after FA_HOLD_MS, a frame every FA_REPEAT_MS. */
   bool held_long_enough = now - fa_button_down_at >= FA_HOLD_MS * ticks_per_ms;
@@ -244,7 +263,7 @@ static void fa_hold_game(void)
     input_update();
     /* L + L3 always runs again, even with the menu open: nothing is drawn while paused, so a menu
      * opened here can't be seen. Checked before the menu gets the input. */
-    if (command_pressed(CMD_FRAME_ADVANCE)) {
+    if (command_pressed(CMD_UNPAUSE)) {
       if (menu_current)
         menu_close();
       fa_button_down = false;
@@ -302,7 +321,7 @@ static void fa_frame(void)
     fa_paused = true;
     static char notice[128];
     char toggle[48];
-    binding_text(command_bindings[CMD_FRAME_ADVANCE], toggle, sizeof(toggle));
+    binding_text(command_bindings[CMD_UNPAUSE], toggle, sizeof(toggle));
     snprintf(notice, sizeof(notice), "frame advance: %s a frame, %s to unpause", button_name(FA_STEP_BUTTON), toggle);
     gfx_notice(notice);
     /* The game shows nothing new while it's held, so this frame is let through first, with the pause
@@ -337,6 +356,7 @@ static void frame(void)
   frames_run++;
   sys_frame();
   input_update();
+  fa_menu_was_open = menu_current != 0; /* a tap of L that closes the menu doesn't pause */
 
   menu_controls();
   if (menu_current) {

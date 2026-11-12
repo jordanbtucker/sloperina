@@ -2394,7 +2394,7 @@ static void build_frame_advance(void)
   menu_add_heading(&m_frame_advance, "frame advance options");
   menu_item_t *enabled = menu_add_check(&m_frame_advance, "enabled", get_fa, set_fa, 0);
   if (enabled) {
-    enabled->hint = "in game, {pause}: pause or unpause; while paused, tap {step} for a frame";
+    enabled->hint = "in game, {pause}: pause; while paused, tap {step} for a frame; {unpause}: unpause";
     enabled->log_label = "frame advance";
   }
   menu_item_t *in_pause = menu_add_check(&m_frame_advance, "in pause screen", get_fa_in_pause, set_fa_in_pause, 0);

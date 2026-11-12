@@ -19,7 +19,8 @@ typedef enum {
   CMD_MENU,          /* open / close the menu: in both groups */
   CMD_LOAD_POSITION,
   CMD_SAVE_POSITION,
-  CMD_FRAME_ADVANCE, /* pause / run again */
+  CMD_PAUSE,         /* frame advance: may be step frame's button alone (a tap, as in gz) */
+  CMD_UNPAUSE,       /* may be the same combo as pause */
   CMD_LEVITATE,
   CMD_WATCHES,
   CMD_TIMER,         /* start / stop */

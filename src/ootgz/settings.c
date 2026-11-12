@@ -446,8 +446,16 @@ static void parse_line(const char *line, snapshot_t *s, bool *have_list)
     uint32_t button = button_from_name(value, (int)strlen(value));
     s->shortcut_button = button ? (int32_t)button : value[0] == 'N' || value[0] == 'n' ? 0 : -1; /* -1: unusable */
   } else if (key_is(line, "frame_advance_button", &value)) {
-    /* a button, or "Shortcut" (and files from before: 0 L, 1 R, both now the shortcut button) */
-    s->frame_advance_button = (int32_t)button_from_name(value, (int)strlen(value));
+    /* a button, or "Shortcut"; master's files: 0 (L) or 1 (R), with master's pause (a tap of the button)
+     * and unpause (the button + L3), which bind_pause / bind_unpause lines (none in master's files) override */
+    if ((value[0] == '0' || value[0] == '1') && !value[1]) {
+      uint32_t button = value[0] == '1' ? BTN_R : BTN_L;
+      s->frame_advance_button = (int32_t)button;
+      s->bind_held[CMD_PAUSE] = 0, s->bind_button[CMD_PAUSE] = (int32_t)button;
+      s->bind_held[CMD_UNPAUSE] = (int32_t)button, s->bind_button[CMD_UNPAUSE] = BTN_LSTICK;
+    } else {
+      s->frame_advance_button = (int32_t)button_from_name(value, (int)strlen(value));
+    }
   } else if (parse_button_line(line, s)) {
   } else {
     for (size_t k = 0; k < N_INT_KEYS; k++) {

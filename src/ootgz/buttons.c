@@ -33,7 +33,8 @@ static const binding_t remake_bindings[CMD_COUNT] = {
   [CMD_MENU] = COMBO(BTN_L, BTN_PLUS),
   [CMD_LOAD_POSITION] = COMBO(BTN_L, BTN_DDOWN),
   [CMD_SAVE_POSITION] = COMBO(BTN_L, BTN_DUP),
-  [CMD_FRAME_ADVANCE] = COMBO(BTN_L, BTN_LSTICK),
+  [CMD_PAUSE] = COMBO(BTN_L, BTN_LSTICK),
+  [CMD_UNPAUSE] = COMBO(BTN_L, BTN_LSTICK),
   [CMD_LEVITATE] = COMBO(BTN_L, BTN_DLEFT),
   [CMD_WATCHES] = COMBO(BTN_L, BTN_DRIGHT),
   [CMD_TIMER] = COMBO(BTN_L | BTN_R, BTN_DUP),
@@ -53,7 +54,8 @@ static const binding_t gz_bindings[CMD_COUNT] = {
   [CMD_MENU] = COMBO(BTN_R, BTN_RS_DOWN),
   [CMD_LOAD_POSITION] = COMBO(BTN_R, BTN_DDOWN),
   [CMD_SAVE_POSITION] = COMBO(BTN_R, BTN_DUP),
-  [CMD_FRAME_ADVANCE] = COMBO(BTN_L, BTN_LSTICK),
+  [CMD_PAUSE] = COMBO(0, BTN_L), /* a tap of step frame's button, as on master */
+  [CMD_UNPAUSE] = COMBO(BTN_L, BTN_LSTICK),
   [CMD_LEVITATE] = COMBO(0, BTN_LSTICK),
   [CMD_WATCHES] = COMBO(BTN_R, BTN_DRIGHT),
   [CMD_TIMER] = COMBO(BTN_R | BTN_A, BTN_DLEFT),
@@ -68,12 +70,12 @@ static const binding_t gz_bindings[CMD_COUNT] = {
 static const uint32_t gz_menu_buttons[MB_COUNT] = { BTN_L };
 
 static const char *const command_setting_keys[CMD_COUNT] = {
-  "bind_menu", "bind_load_position", "bind_save_position", "bind_frame_advance", "bind_levitate",
+  "bind_menu", "bind_load_position", "bind_save_position", "bind_pause", "bind_unpause", "bind_levitate",
   "bind_watches", "bind_timer", "bind_timer_reset", "bind_lag_reset", "bind_js_height_reset",
   "menu_back", "menu_back_other", "menu_minus_10", "menu_plus_10",
 };
 static const char *const command_labels[CMD_COUNT] = {
-  "open / close menu", "load position", "save position", "pause / unpause", "levitate", "show / hide watches",
+  "open / close menu", "load position", "save position", "pause", "unpause", "levitate", "show / hide watches",
   "timer start / stop", "timer reset", "lag counter reset", "JS height reset", "return", "return (alternate)",
   "number -10", "number +10",
 };
@@ -219,7 +221,7 @@ static const struct {
   int single;  /* 0: select, 1: step frame */
 } fills[] = {
   { "menu", CMD_MENU, 0 },          { "save", CMD_SAVE_POSITION, 0 },     { "load", CMD_LOAD_POSITION, 0 },
-  { "pause", CMD_FRAME_ADVANCE, 0 }, { "levitate", CMD_LEVITATE, 0 },    { "watches", CMD_WATCHES, 0 },
+  { "pause", CMD_PAUSE, 0 },        { "unpause", CMD_UNPAUSE, 0 }, { "levitate", CMD_LEVITATE, 0 },    { "watches", CMD_WATCHES, 0 },
   { "js_reset", CMD_JS_HEIGHT_RESET, 0 }, { "return", CMD_MENU_BACK, 0 }, { "minus_10", CMD_NUMBER_MINUS_10, 0 },
   { "plus_10", CMD_NUMBER_PLUS_10, 0 }, { "select", -1, 0 },             { "step", -1, 1 },
 };
@@ -319,8 +321,11 @@ static bool same_binding(binding_t a, binding_t b) { return a.held == b.held && 
 /* in-game shortcuts are one group, the menu's (open / close, back) another */
 static bool in_game_group(int c) { return c < CMD_MENU_BACK; }
 static bool in_menu_group(int c) { return c == CMD_MENU || c >= CMD_MENU_BACK; }
+/* (pause and unpause work in different states, so they may share a combo) */
 static bool same_group(int c, int d)
 {
+  if ((c == CMD_PAUSE && d == CMD_UNPAUSE) || (c == CMD_UNPAUSE && d == CMD_PAUSE))
+    return false;
   return (in_game_group(c) && in_game_group(d)) || (in_menu_group(c) && in_menu_group(d));
 }
 
@@ -406,7 +411,7 @@ static const char *unusable_combo(int c, binding_t b)
     return "3 buttons at most";
   if (all == input_shortcut_button)
     return "the shortcut button alone is frame advance's";
-  if (all == frame_advance_button())
+  if (all == frame_advance_button() && c != CMD_PAUSE)
     return "step frame's button alone steps frames";
   if (in_menu_group(c) && lone(b) && is_menu_button(lone(b), -1))
     return "that button alone is select";
@@ -569,7 +574,7 @@ bool set_frame_advance_button(uint32_t button)
   if (button == input_shortcut_button)
     button = 0;
   for (int c = 0; button && c < CMD_COUNT; c++)
-    if (all_of(command_bindings[c]) == button) {
+    if (all_of(command_bindings[c]) == button && c != CMD_PAUSE) {
       gfx_logf("%s alone is %s: change that first", button_name(button), command_labels[c]);
       return false;
     }
@@ -844,7 +849,7 @@ static const char *const command_hints[CMD_COUNT] = {
 
 void buttons_build_menu(menu_t *m)
 {
-  menu_init(m, "buttons", 28);
+  menu_init(m, "buttons", 32);
   menu_item_t *shortcut = capture_row(m, "shortcut button", ROW(ROW_SHORTCUT, 0), false,
                                       "hold for shortcuts: it, and anything pressed while it's held, is not passed "
                                       "to the game; press d-left/right to clear");
@@ -859,8 +864,10 @@ void buttons_build_menu(menu_t *m)
     capture_row(m, command_labels[shortcuts[i]], ROW(ROW_COMMAND, shortcuts[i]), true, command_hints[shortcuts[i]]);
   menu_end_group(m);
   menu_add_heading(m, "frame advance");
-  capture_row(m, command_labels[CMD_FRAME_ADVANCE], ROW(ROW_COMMAND, CMD_FRAME_ADVANCE), true,
-              "pause or unpause the game for frame advance (needs settings > frame advance > enabled)");
+  capture_row(m, command_labels[CMD_PAUSE], ROW(ROW_COMMAND, CMD_PAUSE), true,
+              "pauses the game for frame advance (needs settings > frame advance > enabled)");
+  capture_row(m, command_labels[CMD_UNPAUSE], ROW(ROW_COMMAND, CMD_UNPAUSE), true,
+              "unpauses the game when frame advance has paused it");
   capture_row(m, "step frame", ROW(ROW_FRAME_ADVANCE, 0), false,
               "while paused by frame advance: tap to advance one frame, hold to advance frames slowly; not passed "
               "to the game while frame advance is enabled");
