@@ -31,19 +31,18 @@ Everything sloperinaGZ can do, menu by menu. New to it? Start with the [usage gu
 
 sloperinaGZ is a practice menu for **The Legend of Zelda: Ocarina of Time (Switch 2)**, versions 1.0.0 and 1.1.1, modelled
 on gz, the practice ROM for the N64 game. The game loads it itself, so it runs on a console (Atmosphère) and in
-emulators alike. Open the menu with **R + right stick down** (the remake preset: **L + Plus**). This manual names
-the menu's buttons by what they do (**select**, **return**, **number -10 / +10**); [2.10.1](#2101-buttons) sets them.
+emulators alike. Open the menu with **R + right stick down**.
 
 ### 1.1 Controls
 
-| Button | gz preset (the default) | remake preset |
-|---|---|---|
-| Open / close the menu | **R + right stick down** | **L + Plus** |
-| Move | **D-pad up / down** | **D-pad up / down** |
-| Change the value, or pick a button in a row | **D-pad left / right** | **D-pad left / right** |
-| **select**: select / press | **L** | **A** |
-| **number -10 / +10**: numbers, by 10 | **L + D-pad left / right** | **ZL / ZR** |
-| **return**: back one page (on the first page: close the menu) | **B**, or **R + D-pad left** | **B** |
+| Button | Does |
+|---|---|
+| **R + right stick down** | Open / close the menu |
+| **D-pad up / down** | Move |
+| **D-pad left / right** | Change the value, or pick a button in a row |
+| **L** | Select / press |
+| **L held + D-pad left / right** | Numbers: change by 10 |
+| **R + D-pad left** | Back one menu (closes the menu at the top) |
 
 While the menu is open the game doesn't see the controller.
 
@@ -55,7 +54,7 @@ While the menu is open the game doesn't see the controller.
 - `name >` opens another menu. `☑ name` is a checkbox. `name  < value >` is a switch. `name  < 3 > / 9` is a
   number (with its maximum).
 - Some rows are **rows of buttons** (watches, the memory viewer): D-pad left / right picks a button, which turns
-  blue, and **select** presses it.
+  blue, and **L** presses it.
 - A **^** or **v** at the side means the list goes on above or below.
 - Read-only information sits under **return**, after a blank line.
 
@@ -63,25 +62,19 @@ While the menu is open the game doesn't see the controller.
 
 With the menu closed:
 
-| Shortcut | gz preset (the default) | remake preset |
-|---|---|---|
-| Open / close the menu | **R + right stick down** | **L + Plus** |
-| Save position: where Link is and which way he faces | **R + D-pad up** | **L + D-pad up** |
-| Load position: put Link back there (same map only) | **R + D-pad down** | **L + D-pad down** |
-| Show / hide the watch window | **R + D-pad right** | **L + D-pad right** |
-| Start / stop the timer | **R + A + D-pad left** | **L + R + D-pad up** |
-| Reset the timer | **R + B + D-pad left** | **L + R + D-pad down** |
-| Reset the lag counter | **R + B + D-pad right** | **L + R + D-pad left** |
-| Reset **JS Height** (jump slash height) to its maximum, as returning to the title screen does | **R + A + D-pad right** | **L + R + D-pad right** |
-| Levitate on / off (if enabled, [2.10.3](#2103-levitate)) | **L3** | **L + D-pad left** |
-| Frame advance: pause / unpause (if enabled, [2.10.4](#2104-frame-advance)) | **L + L3** | **L + L3** |
-| Frame advance, while paused: **step frame** | **L** | **L** |
-| Levitate up / down; release to hover | **X / B** held | the same |
-| Levitate: hold height even if X/B is held | **R3** held | the same |
-
-The gz preset passes every button to the game, as gz does. The remake preset uses **L** as the shortcut button:
-L, and anything pressed while it's held, isn't passed to the game, so **R** stays free for quick select. Every
-shortcut can be changed ([2.10.1](#2101-buttons)).
+| Shortcut | Does |
+|---|---|
+| **R + D-pad right** | Show / hide the watches |
+| **R + A + D-pad left** | Start / stop the timer |
+| **R + B + D-pad left** | Reset the timer |
+| **R + B + D-pad right** | Reset the lag counter |
+| **R + A + D-pad right** | Reset **JS Height** to FLT_MAX (as after a load: the jumpslash then works at any height) |
+| **R + D-pad up** | Save position: where Link is and which way he faces |
+| **R + D-pad down** | Load position: put Link back there (same map only) |
+| **L3** | Levitate on / off (if enabled, [2.10.2](#2102-levitate)) |
+| **X / B** held | Levitate up / down; release to hover |
+| **R3** held | Levitate: hold height even if X/B is held |
+| **L** or **R** (your choice) | Frame advance (if enabled, [2.10.3](#2103-frame-advance)) |
 
 ## 2 Menus
 
@@ -89,14 +82,14 @@ shortcut can be changed ([2.10.1](#2101-buttons)).
 
 | Item | What it does |
 |---|---|
-| **health** | Link's health in hearts and quarters. D-pad changes it a quarter heart at a time; **select** fills it. |
+| **health** | Link's health in hearts and quarters. D-pad changes it a quarter heart at a time; **L** fills it. |
 | **heart containers** | 1 to 20. Lowering it below your health lowers your health too. |
-| **rupees** | Up to your wallet's size. **select** fills it. |
+| **rupees** | Up to your wallet's size. **L** fills it. |
 | **age** | **child** or **adult**: what the next **reload map** gives you. |
 | **reload map** | Reloads the map you're in, at the age chosen above. Changing age loads the other age's version of the map and swaps sword and shield with the ones from the other age (adult-only tunics and boots come off a child). |
 
-| **save position** (*its shortcut*) | Remembers where Link is, which way he faces and the map (gz's save position). The first save in an area only finds Link's position in memory ("Locating Link's starting position, please try again"; he's lifted a little while it's tested, as with levitate, and it's quicker while he's moving): press it again once it says it's found him. |
-| **load position** (*its shortcut*) | Puts Link back there, facing the same way. Only in the same map. With nothing saved: "No position saved yet". |
+| **save position (R + d-up)** | Remembers where Link is, which way he faces and the map (gz's save position). The first save in an area only finds Link's position in memory ("Locating Link's starting position, please try again"; he's lifted a little while it's tested, as with levitate, and it's quicker while he's moving): press it again once it says it's found him. |
+| **load position (R + d-down)** | Puts Link back there, facing the same way. Only in the same map. With nothing saved: "No position saved yet". |
 
 Under **return**: Link's **position** (x, y, z), his **current age** and the **map**.
 
@@ -149,7 +142,7 @@ maximum, see **watches > Lock JS Height**.)
 | Menu | What's in it |
 |---|---|
 | **items** | **child items** (deku sticks, boomerang, fairy slingshot, magic beans, child trade item), **adult items** (fairy bow, megaton hammer, fire / ice / light arrow, the **hookshot** switch: none / hookshot / longshot, adult trade item), **universal** (bombs, bombchus, deku nuts, Din's fire, Farore's wind, Nayru's love, ocarina, bottles A to E, business scrub seed). |
-| **ammo** | How much of each kind of ammo you carry, up to your bag's size. **select** fills it. |
+| **ammo** | How much of each kind of ammo you carry, up to your bag's size. **L** fills it. |
 | **equipment items** | **swords** (kokiri, master, and the **big sword** switch: none / giant's knife / broken giant's knife / biggoron's sword), **shields** (kokiri, hylian, mirror), **tunics** (goron, zora), **boots** (iron, hover), **other** (lenses of truth, echo gem, **mask slot**: one of the mask shop's masks at a time, **amiibo mask**: none / fairy-kid mask / princess mask, the masks Link's and Zelda's amiibo give; in the game's style each shows the chosen mask's picture). |
 | **collection** | Fairy ocarina, ocarina of time, gerudo card, double defense; **strength** (goron's bracelet, **gauntlets**: none / silver / gold); **other** (**scale**, **skulltulas**: the tokens' count, and they show in the collection screen, **ammo capacity**: the size of each bag and the wallet, **magic**: your magic and the meter). |
 | **quest items** | **spiritual stones** and **medallions**. |
@@ -168,7 +161,7 @@ What Link is wearing and holding right now (read only).
 | Item | What it does |
 |---|---|
 | **all tutorials seen** | Marks every tutorial message as seen, so they stop popping up. |
-| *each quest* | The quest's current stage; D-pad left / right (or **select**) changes it. It takes effect after a loading zone. |
+| *each quest* | The quest's current stage; D-pad left / right (or **L**) changes it. It takes effect after a loading zone. |
 
 ### 2.8 Watches
 
@@ -176,10 +169,10 @@ gz's watch list: values shown on the screen in a box while you play.
 
 | Item | What it does |
 |---|---|
-| **show on screen** | Show the watches box (also the **show / hide watches** shortcut in the game). |
+| **show on screen** | Show the watches box (also **R + D-pad right** in the game). |
 | **watches box > position** | Top-left, top-right, bottom-left, bottom-right, top-centre, bottom-centre, or **custom**. |
 | **watches box > header** | A small **watches** header over them, underlined (on to begin with). |
-| **watches box > move watches position** | Move the box anywhere: the D-pad glides it (hold to speed up), **select** leaves it there. It's shown while you move it, and so is the input display if it's on. |
+| **watches box > move watches position** | Move the box anywhere: the D-pad glides it (hold to speed up), **L** leaves it there. It's shown while you move it, and so is the input display if it's on. |
 
 **watches**: your list, five at a time (the **↑ ↓** buttons above it scroll when there are more). Each watch is a
 row of buttons:
@@ -197,12 +190,12 @@ Under the list:
 
 - **📁 (known watches)**: the built-in watches: x, y, z, facing, move angle, speed, y speed, camera angle /
   pitch / distance, input, stick, lag, timer, frame, map, air wall, JS Height. Each can be in the list once.
-  **JS Height** is the height your last jump set (takeoff + 0.7; FLT_MAX after returning to the title screen, until you jump), which
+  **JS Height** is the height your last jump set (takeoff + 0.7; FLT_MAX until you jump after a load), which
   the jumpslash launch is limited to. It's always in the list (hide it to keep it off screen).
 - **+ (custom watch)**: a watch of any memory address. Type the address (D-pad left / right: digit, up / down:
-  change it), **select** to add. It starts from your last memory watch, as in gz. One watch per address. Changed
-  your mind? **return**, or D-pad left past the first digit to the **x** that takes the folder's place and
-  **select**: no watch is added.
+  change it), **L** to add. It starts from your last memory watch, as in gz. One watch per address. Changed your
+  mind? **B**, or D-pad left past the first digit to the **x** that takes the folder's place and **L**: no watch is
+  added.
 
 **Display types.** Positions and speeds: **f32** (decimal), **s32** (whole number), **x32** (the float's bits).
 Angles: **deg**, **hex** (the game's 16-bit angle, 0x4000 = 90°), **s16**, **rad**. Counters: **dec**, **hex**.
@@ -211,8 +204,8 @@ Timer: **m:s**, **sec**. Stick: **%**, **raw**. Memory watches: **u8 s8 x8 u16 s
 **timer**: **start/stop timer**, **reset timer**, **reset lag counter** (also shortcuts,
 [1.3](#13-shortcuts-in-the-game)). **Reset JS Height** is under its own heading, below.
 
-**The keyboard** (renaming): the text line at the top (D-pad left / right moves the cursor, **select** finishes),
-then rows of keys (D-pad picks a key, **select** types it) and a row of **shift**, **space**, **back**, **del** and **ok**.
+**The keyboard** (renaming): the text line at the top (D-pad left / right moves the cursor, **L** finishes), then
+rows of keys (D-pad picks a key, **L** types it) and a row of **shift**, **space**, **back**, **del** and **ok**.
 **return** cancels. Up to 12 characters.
 
 Memory watches aren't saved (addresses change every time the game starts); everything else is.
@@ -224,7 +217,7 @@ is enabled. Custom names are preserved; long names are shortened on screen to le
 
 Under the watch list, the **JS Height** controls change that threshold:
 
-- **Reset JS Height** writes `FLT_MAX` (about `3.40282347e+38`) once (also the **JS height reset** shortcut). A later jump
+- **Reset JS Height** writes `FLT_MAX` (about `3.40282347e+38`) once (also **R + A + D-pad right**). A later jump
   may change it again.
 - **Lock JS Height** keeps writing `FLT_MAX` on each mod frame, including while the watch or menu is
   hidden. It follows the current player across scene changes and skips unavailable or read-only memory.
@@ -254,11 +247,11 @@ gz's memory viewer.
 
 | Item | What it does |
 |---|---|
-| **address** | **select** to type an address; D-pad left / right moves a page. |
+| **address** | **L** to type an address; D-pad left / right moves a page. |
 | **view** | byte, halfword, word, float, pointer. |
 | **go to** | Jump to: main, sloperinaGZ, link actor, link status, camera, game data, save strings. |
-| **↑ ↓** | Scroll a row (hold **select** to keep scrolling). |
-| *rows* | 8 bytes each. **select** edits a row: D-pad left / right moves along it, up / down changes the digit (written at once). On the row's address, **select** adds a watch there; in pointer view, **select** on a value goes where it points. **return** stops editing. |
+| **↑ ↓** | Scroll a row (hold **L** to keep scrolling). |
+| *rows* | 8 bytes each. **L** edits a row: D-pad left / right moves along it, up / down changes the digit (written at once). On the row's address, **L** adds a watch there; in pointer view, **L** on a value goes where it points. **R + D-pad left** stops editing. |
 
 Unreadable memory shows as `??`; read-only memory can't be changed. **Editing memory can crash the game.**
 
@@ -273,34 +266,9 @@ and log), **background opacity** (0 to 100%, 60% at first; below 100% the game s
 **hide in game menus** (on at first): no watches, input display or log while the game's pause screen (Plus) or map
 (Minus) is open, so they don't cover it. They show again when it closes, and while this menu is open (to move them).
 
-**other settings**: the **buttons**, **input display**, **levitate** and **frame advance** menus below.
+**other settings**: the **input display**, **levitate** and **frame advance** menus below.
 
-#### 2.10.1 Buttons
-
-Every shortcut and menu button, with the buttons set now. Select a row, then hold up to 3 buttons (a stick
-direction can be one) and let go: that's the new combo. The last button pressed is the one that has to go down
-last, and a combo fires when it does, unless a bigger combo of the same group is held too (**R + B + D-pad right**
-beats **R + D-pad right**). **return** alone cancels, except on the return rows. A combo another row already has
-swaps with it; a combo that can't be used (more than 3 buttons, the shortcut button alone, select alone in the
-menu's group...) is refused and the row keeps waiting.
-
-| Item | What it does |
-|---|---|
-| **shortcut button** | Hold for shortcuts: it, and anything pressed while it's held, is not passed to the game. D-pad left / right clears it (none, the gz preset's: every button is passed to the game). |
-| *shortcuts* | **open / close menu**, **save position**, **load position**, **levitate**, **show / hide watches**, **timer start / stop**, **timer reset**, **lag counter reset**, **JS height reset** ([1.3](#13-shortcuts-in-the-game)). |
-| **pause / unpause** | Frame advance's pause and unpause ([4](#4-about-frame-advance)). |
-| **step frame** | While paused by frame advance: tap to advance one frame, hold to advance frames slowly. Not passed to the game while frame advance is enabled. Set to the shortcut button unless you pick another. |
-| **slow advance delay** | How long **step frame** is held before frames advance slowly: 200 to 1000 ms (400 at first). |
-| **select** | Selects the highlighted menu item. One button. |
-| **return** | Returns to the previous page; on the first page, closes the menu. |
-| **return (alternate)** | Another combo that returns to the previous page; D-pad left / right clears it. |
-| **number -10 / +10** | Lowers or raises the selected number by 10 (repeats while held). If **select** is in the combo, select fills the number when let go, unless the combo was used meanwhile. |
-| **use gz preset (default)** | R for shortcuts, L for frame advance and select, as in gz; all buttons are passed to the game. |
-| **use remake preset** | L is used for shortcuts, and that button is not passed to the game, so R stays free for quick select; A selects, B returns. |
-
-The menu's hints, the start-up message and the **link** menu's position labels show the buttons set now.
-
-#### 2.10.2 Input display
+#### 2.10.1 Input display
 
 gz's input display, at the bottom left unless you move it (hidden while the menu is open).
 
@@ -312,14 +280,14 @@ gz's input display, at the bottom left unless you move it (hidden while the menu
 | **style** | **row**: gz's line of stick values and buttons. **controller**: a Switch 2 Pro Controller with the buttons lighting up, rings for the sticks and their values underneath. |
 | **size** | small, medium, large: half, three quarters or all of the menu's size. |
 | **position** | The corner it's in, or **custom** (where **move input display position** left it), as the watches box. |
-| **move input display position** | Move it anywhere: the D-pad glides it (hold to speed up), **select** leaves it there. It's shown while you move it, and so are the watches if they're on. |
+| **move input display position** | Move it anywhere: the D-pad glides it (hold to speed up), **L** leaves it there. It's shown while you move it, and so are the watches if they're on. |
 
-#### 2.10.3 Levitate
+#### 2.10.2 Levitate
 
 | Item | What it does |
 |---|---|
-| **enabled** | The **levitate** shortcut (**L3** in the gz preset) toggles floating. Hold **X** to rise, **B** to descend; release both to hover. The left stick moves horizontally. X/B/R3 are hidden from the game while floating; L3 isn't passed to the game while enabled. |
-| **through walls** | Use the character controller's temporary collision bypass and position setter while floating. Stopping levitation, or turning it off, restores its previous collision mode. Held B commands descent through floors. |
+| **enabled** | **L3** toggles floating. Hold **X** to rise, **B** to descend; release both to hover. The left stick moves horizontally. X/B/R3 are hidden from the game while floating; L3 is reserved while enabled. |
+| **through walls** | Use the character controller's temporary collision bypass and position setter while floating. L3/off restores its previous collision mode. Held B commands descent through floors. |
 | **vertical speed** | X/B speed in units per second, replacing the old rise-speed label. Existing saved settings remain compatible; a saved **0** uses 4 units/s for manual movement. |
 | **move speed** | Horizontal speed in units per second. |
 
@@ -333,7 +301,7 @@ With **through walls** on, Link can pass through walls and ceilings; hold **B** 
 through floors. Exit geometry before stopping levitation, since normal collision resumes then.
 With through walls off, normal floor/wall correction remains active.
 
-The **levitate** shortcut ends levitation with zero vertical velocity. Normal gravity then accelerates the fall,
+**L3** ends levitation with zero vertical velocity. Normal gravity then accelerates the fall,
 and landing protection prevents fall-distance damage through the first landing. Later ordinary
 falls are unchanged. The old short health-refund timer has been removed.
 
@@ -342,13 +310,14 @@ and no landing damage. This does not establish behavior at every surface or duri
 Void protection and a void-trigger viewer are not included. Camera-follow and stationary-position
 pause behavior have not been separately fixed.
 
-#### 2.10.4 Frame advance
+#### 2.10.3 Frame advance
 
 | Item | What it does |
 |---|---|
 | **enabled** | Turns frame advance on ([4](#4-about-frame-advance)). Off by default; updating from 0.0.3 or older turns it off once. |
-| **in pause screen** | Off (the default): while the game's pause screen or an item menu is open, **pause / unpause** doesn't start frame advance and **step frame** is passed to the game. On: it starts frame advance there too. |
+| **in pause screen** | Off (the default): while the game's pause screen or an item menu is open, the button is the game's and doesn't start frame advance. On: it starts frame advance there too. |
 | **pause icon** | gz's pause icon at the top left while paused. |
+| **button** | **L** or **R**. The game doesn't see that button while frame advance is on. |
 
 ### 2.11 Log
 
@@ -373,7 +342,7 @@ The name and version, the build date ("Build Date: ..."), and the website.
 | Menu | Top left, under the D-pad icon | Always on top. |
 | Watches | The corner you choose, or anywhere | [2.8](#28-watches) |
 | Log | Bottom right | What you just did; stays a second, then fades. gz's grey text with a shadow. |
-| Input display | Bottom left, or the corner you choose, or anywhere | [2.10.2](#2102-input-display); in the bottom left, it moves above the watches if they're there too. |
+| Input display | Bottom left, or the corner you choose, or anywhere | [2.10.1](#2101-input-display); in the bottom left, it moves above the watches if they're there too. |
 | Pause icon | Top left | Two bars: paused by frame advance. |
 | Air walls | Over the game | [2.3.1](#231-collision) |
 
@@ -382,18 +351,15 @@ The name and version, the build date ("Build Date: ..."), and the website.
 With **settings > frame advance > enabled** on and the menu closed (and, unless **in pause screen** is on, the
 game's pause screen closed):
 
-The buttons are set in **settings > buttons** ([2.10.1](#2101-buttons)); both presets use **L + L3** for
-**pause / unpause** and **L** for **step frame**.
-
-- **pause / unpause** (L + L3): the game pauses (one more frame plays first, so the pause icon is on screen and
-  you can see it hasn't crashed). Pressed again, the game runs again. That always works, even with the menu open
-  (the menu closes): nothing is drawn while paused, so a menu opened then can't be seen.
-- **step frame** (L), while paused: tap it for one frame. **Hold** it: after the **slow advance delay**, frames
-  advance one after another (about 15 a second) until you let go. It isn't passed to the game while frame advance
-  is enabled.
+- **Tap the button** (L or R): the game pauses (one more frame plays first, so the pause icon is on screen and
+  you can see it hasn't crashed). Tap again: one frame. **Hold** it: after a moment, frames play
+  one after another (about 15 a second) until you let go.
+- **Button + L3**: the game runs again. It always works, even with the menu open (the menu closes): nothing is
+  drawn while paused, so a menu opened then can't be seen. Press L3 first, then the button, so the menu doesn't
+  take the button press.
 - A tap counts when you let go. You can hold or press anything else meanwhile (move the stick, hold A or Z...),
-  as in gz: the frame you let through gets it. A button pressed after **step frame** makes it a shortcut, not a
-  tap.
+  as in gz: the frame you let through gets it. Only with **R** as the button, R + D-pad and R + right stick down
+  stay shortcuts and don't advance.
 - **Buffered input**: everything you press while paused, and the last direction you push each stick, is given to
   the next frame, even if you've let go by then.
 - While paused the picture doesn't change (the game draws nothing), so the watches and input display update with
@@ -404,15 +370,7 @@ The buttons are set in **settings > buttons** ([2.10.1](#2101-buttons)); both pr
 Settings are saved on the SD card in `sloperinaGZ/settings.ini` (on an emulator, its virtual SD card) a couple of
 seconds after you close the menu. It's plain `key=value` text: cheats, watches (which, in what order, their types,
 names and whether shown), the watches box, menu size, background, hiding in game menus, language, input display,
-levitate, frame advance and the buttons. Delete it to go back to the defaults.
-
-The buttons' keys: `shortcut_button=None` (or a button, `L`), `frame_advance_button=Shortcut` (or a button),
-`bind_<shortcut>=R+A+Left` (up to 3 buttons, the last one pressed last; `bind_menu`, `bind_save_position`,
-`bind_load_position`, `bind_frame_advance`, `bind_levitate`, `bind_watches`, `bind_timer`, `bind_timer_reset`,
-`bind_lag_reset`, `bind_js_height_reset`), `menu_select=L`, `menu_back=B`, `menu_back_other=R+Left` (or `None`),
-`menu_minus_10=L+Left`, `menu_plus_10=L+Right` and `slow_play_delay=400` (200 to 1000). Button names: `A B X Y
-L R ZL ZR L3 R3 Plus Minus Up Down Left Right`, and the sticks' `LSUp LSDown LSLeft LSRight RSUp RSDown RSLeft
-RSRight`. Anything that can't be used goes back to its default, and the log says so. Your game saves are never touched.
+levitate and frame advance. Delete it to go back to the defaults. Your game saves are never touched.
 
 The game's pictures sloperinaGZ uses (the controllers in the input display, the menus' parts, the item icons)
 are kept in `sloperinaGZ/cache/` once they're made from your copy of the game, so later starts don't have to make
