@@ -1460,6 +1460,14 @@ static bool row_setup(mrow_t *r)
         break;
       }
     }
+    if ((panel->kind[r->row] & GFX_ROW_VALUE) && r->switch_from == r->cols) { /* "label  value" */
+      for (int c = first_text + 2; c < r->cols; c++) {
+        if (ch[c] != ' ' && ch[c] != 0x7F && ch[c - 1] == ' ' && ch[c - 2] == ' ') {
+          r->switch_from = c;
+          break;
+        }
+      }
+    }
   }
   if (r->kind == GFX_ROW_WATCH && GFX_WATCH_LABEL_W + 1 < r->cols) /* the value right-aligned */
     r->switch_from = GFX_WATCH_LABEL_W + 1;

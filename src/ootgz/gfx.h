@@ -77,6 +77,7 @@ typedef enum {
 #define GFX_ROW_OPENS 0x10 /* an item that opens a menu: its line ends " >" */
 #define GFX_ROW_GRID 0x20  /* a line kept on the grid, a character a cell (menu_item_t.grid) */
 #define GFX_ROW_INDENT 0x40 /* an item under a heading, menu.c's MENU_INDENT cells in (the game's style indents it less) */
+#define GFX_ROW_VALUE 0x80 /* "label  value": the value (after the first two spaces) in the menu's value column, as a "< value >" */
 #define GFX_WATCH_LABEL_W 12
 
 /* the input display's controller drawing (gfx_input_pad): where its sticks and d-pad are, in font pixels

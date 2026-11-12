@@ -848,7 +848,8 @@ static int row_kind(const menu_item_t *item)
   if (item->kind == MI_TEXT)
     return (item->text == heading_text ? GFX_ROW_HEADING : GFX_ROW_LINE) | grid;
   int indent = item->indent ? GFX_ROW_INDENT : 0;
-  return (item->kind == MI_SUBMENU ? GFX_ROW_ITEM | GFX_ROW_OPENS : GFX_ROW_ITEM) | grid | indent;
+  int value = item->capture && item->text ? GFX_ROW_VALUE : 0; /* settings > buttons: "label  L + Plus" */
+  return (item->kind == MI_SUBMENU ? GFX_ROW_ITEM | GFX_ROW_OPENS : GFX_ROW_ITEM) | grid | indent | value;
 }
 
 void menu_draw(void)
