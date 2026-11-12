@@ -1036,6 +1036,8 @@ static const struct { const char *word; uint32_t glyph, other; } buttons[] = {
   { "d-u/d", GF_DPAD_UP_DOWN, 0 }, { "d-left", GF_DPAD_LEFT, 0 }, { "d-right", GF_DPAD_RIGHT, 0 }, /* not menu text */
   { "d-up", GF_DPAD_UP, 0 }, { "d-down", GF_DPAD_DOWN, 0 }, { "d-pad", GF_DPAD, 0 }, /* not menu text */
   { "L3", GF_LSTICK_PRESS, 0 }, { "R3", GF_RSTICK_PRESS, 0 },
+  { "Plus", GF_PLUS, 0 }, { "Minus", GF_MINUS, 0 }, /* settings > buttons' names (buttons.c) */
+  { "LS-down", GF_LSTICK_DOWN, 0 }, { "RS-down", GF_RSTICK_DOWN, 0 },
   { "ZL", GF_BTN_ZL, 0 }, { "ZR", GF_BTN_ZR, 0 }, { "L", GF_BTN_L, 0 }, { "R", GF_BTN_R, 0 }, { "A", GF_BTN_A, 0 },
   { "B", GF_BTN_B, 0 }, { "X", GF_BTN_X, 0 }, { "Y", GF_BTN_Y, 0 },
 };

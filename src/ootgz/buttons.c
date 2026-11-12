@@ -86,7 +86,7 @@ static const char *const key_names[N_NAMES] = {
   "LSLeft", "LSUp", "LSRight", "LSDown", "RSLeft", "RSUp", "RSRight", "RSDown",
 };
 static const char *const shown_names[N_NAMES] = {
-  "A", "B", "X", "Y", "L3", "R3", "L", "R", "ZL", "ZR", "Plus", "Minus", "D-left", "D-up", "D-right", "D-down",
+  "A", "B", "X", "Y", "L3", "R3", "L", "R", "ZL", "ZR", "Plus", "Minus", "d-left", "d-up", "d-right", "d-down",
   "LS-left", "LS-up", "LS-right", "LS-down", "RS-left", "RS-up", "RS-right", "RS-down",
 };
 /* (the font has a stick pushed down, not the other ways: those show the plain stick) */
