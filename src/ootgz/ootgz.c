@@ -300,7 +300,7 @@ static void fa_frame(void)
     input_force_active = false;
   if (!fa_paused && fa_read_button() == FA_TOGGLE) {
     fa_paused = true;
-    static char notice[80];
+    static char notice[128];
     char toggle[48];
     binding_text(command_bindings[CMD_FRAME_ADVANCE], toggle, sizeof(toggle));
     snprintf(notice, sizeof(notice), "frame advance: %s a frame, %s to unpause", button_name(FA_STEP_BUTTON), toggle);
