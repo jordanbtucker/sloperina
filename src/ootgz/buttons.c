@@ -763,30 +763,42 @@ static menu_item_t *capture_row(menu_t *m, const char *label, int data, bool com
   return it;
 }
 
-#define COMBO_HINT "select, then hold up to 3 buttons and let go"
+/* what each shortcut does, for its row's hint */
+static const char *const command_hints[CMD_COUNT] = {
+  [CMD_MENU] = "opens or closes this menu",
+  [CMD_SAVE_POSITION] = "saves Link's position",
+  [CMD_LOAD_POSITION] = "moves Link to the saved position",
+  [CMD_LEVITATE] = "starts or stops levitating (needs settings > levitate > enabled)",
+  [CMD_WATCHES] = "shows or hides the watch window",
+  [CMD_TIMER] = "starts or stops the timer",
+  [CMD_TIMER_RESET] = "resets the timer",
+  [CMD_LAG_RESET] = "resets the lag counter",
+  [CMD_JS_HEIGHT_RESET] = "sets jump slash (JS) height, the takeoff height your last jump saved, back to its maximum, "
+                          "as returning to the title screen does",
+};
 
 void buttons_build_menu(menu_t *m)
 {
   menu_init(m, "buttons", 28);
   menu_item_t *shortcut = capture_row(m, "shortcut button", ROW(ROW_SHORTCUT, 0), false,
                                       "hold for shortcuts: it, and anything pressed while it's held, is not passed "
-                                      "to the game; d-left/right: none");
+                                      "to the game; press d-left/right to clear");
   if (shortcut)
     shortcut->on_change = toggle_none;
   menu_add_heading(m, "shortcuts");
   static const command_t shortcuts[] = {
-    CMD_MENU, CMD_LOAD_POSITION, CMD_SAVE_POSITION, CMD_LEVITATE, CMD_WATCHES,
+    CMD_MENU, CMD_SAVE_POSITION, CMD_LOAD_POSITION, CMD_LEVITATE, CMD_WATCHES,
     CMD_TIMER, CMD_TIMER_RESET, CMD_LAG_RESET, CMD_JS_HEIGHT_RESET,
   };
   for (unsigned i = 0; i < sizeof(shortcuts) / sizeof(*shortcuts); i++)
-    capture_row(m, command_labels[shortcuts[i]], ROW(ROW_COMMAND, shortcuts[i]), true, COMBO_HINT);
+    capture_row(m, command_labels[shortcuts[i]], ROW(ROW_COMMAND, shortcuts[i]), true, command_hints[shortcuts[i]]);
   menu_end_group(m);
   menu_add_heading(m, "frame advance");
   capture_row(m, command_labels[CMD_FRAME_ADVANCE], ROW(ROW_COMMAND, CMD_FRAME_ADVANCE), true,
               "pause or unpause the game for frame advance (needs settings > frame advance > enabled)");
   capture_row(m, "step frame", ROW(ROW_FRAME_ADVANCE, 0), false,
               "while paused by frame advance: tap to advance one frame, hold to advance frames slowly; not passed "
-              "to the game while frame advance is on");
+              "to the game while frame advance is enabled");
   menu_item_t *slow = menu_add_option(m, "slow advance delay", SLOW_PLAY_CHOICES, 0, get_slow_play, set_slow_play, 0);
   if (slow) {
     slow->choice_text = slow_play_text;
@@ -795,11 +807,11 @@ void buttons_build_menu(menu_t *m)
   menu_end_group(m);
   menu_add_heading(m, "menu buttons");
   capture_row(m, menu_button_labels[MB_SELECT], ROW(ROW_MENU_BUTTON, MB_SELECT), false,
-              "select, then press the new button");
+              "selects the highlighted menu item");
   capture_row(m, command_labels[CMD_MENU_BACK], ROW(ROW_COMMAND, CMD_MENU_BACK), true,
               "returns to the previous page; on the first page, closes the menu");
   menu_item_t *alternate = capture_row(m, command_labels[CMD_MENU_BACK_OTHER], ROW(ROW_COMMAND, CMD_MENU_BACK_OTHER),
-                                       true, "another combo that returns to the previous page; d-left/right: none");
+                                       true, "another combo that returns to the previous page; press d-left/right to clear");
   if (alternate)
     alternate->on_change = toggle_none;
   capture_row(m, command_labels[CMD_NUMBER_MINUS_10], ROW(ROW_COMMAND, CMD_NUMBER_MINUS_10), true,
