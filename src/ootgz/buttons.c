@@ -468,7 +468,7 @@ bool set_shortcut_button(uint32_t button)
     for (int m = 0; button && m < MB_COUNT; m++)
       if (menu_buttons[m] == button)
         menu_buttons[m] = 0; /* buttons_check finds it another */
-    gfx_logf("shortcut button: %s", button ? button_name(button) : "none (nothing hidden from the game)");
+    gfx_logf("shortcut button: %s", button ? button_name(button) : "none (all buttons are passed to the game)");
     buttons_check();
     return true;
   }
@@ -746,9 +746,9 @@ void buttons_build_menu(menu_t *m)
 {
   menu_init(m, "buttons", 28);
   capture_row(m, "shortcut button", ROW(ROW_SHORTCUT, 0), false,
-              "Hold this button for shortcuts. While it's held, all buttons are blocked from the game, so a "
-              "shortcut does nothing in the game. The shortcut button itself is always blocked from the game. "
-              "None: no buttons are blocked.");
+              "Hold this button for shortcuts. While it's held, no buttons are passed to the game, so a "
+              "shortcut does nothing in the game. The shortcut button itself is never passed to the game. "
+              "None: all buttons are passed to the game.");
   menu_add_heading(m, "shortcuts");
   static const command_t shortcuts[] = {
     CMD_MENU, CMD_LOAD_POSITION, CMD_SAVE_POSITION, CMD_LEVITATE, CMD_WATCHES,
@@ -763,7 +763,7 @@ void buttons_build_menu(menu_t *m)
               "advance). " COMBO_HINT);
   capture_row(m, "step frame", ROW(ROW_FRAME_ADVANCE, 0), false,
               "While frame advance has the game paused, tap to play one frame or hold to play slowly. This "
-              "button is blocked from the game while frame advance is on.");
+              "button is not passed to the game while frame advance is on.");
   menu_item_t *slow = menu_add_option(m, "slow play delay", SLOW_PLAY_CHOICES, 0, get_slow_play, set_slow_play, 0);
   if (slow) {
     slow->choice_text = slow_play_text;
@@ -783,10 +783,10 @@ void buttons_build_menu(menu_t *m)
   menu_end_group(m);
   menu_item_t *gz = menu_add_action(m, "use gz layout (default)", act_gz, 0);
   if (gz)
-    gz->hint = "R for shortcuts, L for frame advance, L to select, as in gz. No buttons are blocked from the game.";
+    gz->hint = "R for shortcuts, L for frame advance, L to select, as in gz. All buttons are passed to the game.";
   menu_item_t *remake = menu_add_action(m, "use remake layout", act_remake, 0);
   if (remake)
-    remake->hint = "L for shortcuts, and L is blocked from the game, so R stays free for quick select. A selects, "
+    remake->hint = "L for shortcuts, and L is not passed to the game, so R stays free for quick select. A selects, "
                    "B goes back.";
   menu_add_return(m);
 }
