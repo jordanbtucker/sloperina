@@ -212,6 +212,71 @@ static void join(binding_t b, char *buf, int len, const char *sep, const char *(
 void binding_text(binding_t b, char *buf, int len) { join(b, buf, len, " + ", button_name, "none"); }
 void binding_key(binding_t b, char *buf, int len) { join(b, buf, len, "+", button_key, "None"); }
 
+/* buttons_fill's placeholders: a command's combo, or one of the single buttons */
+static const struct {
+  const char *name;
+  int command; /* -1: a single button */
+  int single;  /* 0: select, 1: step frame */
+} fills[] = {
+  { "menu", CMD_MENU, 0 },          { "save", CMD_SAVE_POSITION, 0 },     { "load", CMD_LOAD_POSITION, 0 },
+  { "pause", CMD_FRAME_ADVANCE, 0 }, { "levitate", CMD_LEVITATE, 0 },    { "watches", CMD_WATCHES, 0 },
+  { "js_reset", CMD_JS_HEIGHT_RESET, 0 }, { "return", CMD_MENU_BACK, 0 }, { "minus_10", CMD_NUMBER_MINUS_10, 0 },
+  { "plus_10", CMD_NUMBER_PLUS_10, 0 }, { "select", -1, 0 },             { "step", -1, 1 },
+};
+
+/* where c is in s, 0 if it isn't (strchr isn't imported) */
+static const char *find_char(const char *s, char c)
+{
+  for (; *s; s++)
+    if (*s == c)
+      return s;
+  return 0;
+}
+
+/* the name, n characters at s, is exactly word */
+static bool names_word(const char *s, int n, const char *word)
+{
+  int i = 0;
+  while (i < n && word[i] == s[i])
+    i++;
+  return i == n && !word[i];
+}
+
+const char *buttons_fill(const char *text)
+{
+  if (!text || !find_char(text, '{'))
+    return text;
+  static char bufs[4][256];
+  static int next;
+  char *out = bufs[next];
+  next = (next + 1) % 4;
+  int at = 0, len = (int)sizeof(bufs[0]);
+  for (const char *p = text; *p && at < len - 1;) {
+    const char *close = *p == '{' ? find_char(p, '}') : 0;
+    int found = -1;
+    if (close)
+      for (unsigned i = 0; i < sizeof(fills) / sizeof(*fills); i++)
+        if (names_word(p + 1, (int)(close - p - 1), fills[i].name))
+          found = (int)i;
+    if (found < 0) {
+      out[at++] = *p++;
+      continue;
+    }
+    char name[64];
+    if (fills[found].command >= 0)
+      binding_text(command_bindings[fills[found].command], name, sizeof(name));
+    else
+      snprintf(name, sizeof(name), "%s",
+               button_name(fills[found].single ? frame_advance_button() : menu_buttons[MB_SELECT]));
+    at += snprintf(out + at, len - at, "%s", name);
+    if (at > len - 1)
+      at = len - 1;
+    p = close + 1;
+  }
+  out[at] = 0;
+  return out;
+}
+
 /* "R+A+Left": the last name is the one that goes down last; "None": none */
 bool binding_parse(const char *text, binding_t *out)
 {
@@ -739,14 +804,14 @@ static void act_gz(menu_item_t *it)
 {
   (void)it;
   buttons_defaults();
-  gfx_logf("buttons: gz layout");
+  gfx_logf("buttons: gz preset");
 }
 
 static void act_remake(menu_item_t *it)
 {
   (void)it;
   buttons_remake();
-  gfx_logf("buttons: remake layout");
+  gfx_logf("buttons: remake preset");
 }
 
 static menu_item_t *capture_row(menu_t *m, const char *label, int data, bool combo, const char *hint)
@@ -819,11 +884,12 @@ void buttons_build_menu(menu_t *m)
   capture_row(m, command_labels[CMD_NUMBER_PLUS_10], ROW(ROW_COMMAND, CMD_NUMBER_PLUS_10), true,
               "raises the selected number by 10");
   menu_end_group(m);
-  menu_item_t *gz = menu_add_action(m, "use gz layout (default)", act_gz, 0);
+  menu_item_t *gz = menu_add_action(m, "use gz preset (default)", act_gz, 0);
   if (gz)
     gz->hint = "R for shortcuts, L for frame advance and select, as in gz; all buttons are passed to the game";
-  menu_item_t *remake = menu_add_action(m, "use remake layout", act_remake, 0);
+  menu_item_t *remake = menu_add_action(m, "use remake preset", act_remake, 0);
   if (remake)
-    remake->hint = "L is used for shortcuts, and that button is not passed to the game, so R stays free for quick select; A selects, B returns";
+    remake->hint = "L is used for shortcuts, and that button is not passed to the game, so R stays free for quick "
+                   "select; A selects, B returns";
   menu_add_return(m);
 }

@@ -68,6 +68,10 @@ uint32_t button_glyph_of(uint32_t button);
 /* "R + A + D-left" / "R+A+Left" (the shortcut button first, the last button last), "none" / "None" */
 void binding_text(binding_t b, char *buf, int len);
 void binding_key(binding_t b, char *buf, int len);
+/* the text with "{select}", "{step}" and command combos ("{menu}", "{save}", "{load}", "{pause}",
+ * "{levitate}", "{watches}", "{js_reset}", "{return}", "{minus_10}", "{plus_10}") filled in with the buttons set
+ * now; the text itself if it has none. The result lasts until the 4th call after. */
+const char *buttons_fill(const char *text);
 /* settings.ini's text back; false if it doesn't parse */
 bool binding_parse(const char *text, binding_t *out);
 /* the combo's buttons in binding_text's order; returns how many */

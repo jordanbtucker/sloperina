@@ -293,8 +293,8 @@ static bool row_edit(menu_item_t *item)
   return true;
 }
 
-static const char *const arrow_hints[] = { "L: scroll up a row (held: keeps going)",
-                                           "L: scroll down a row (held: keeps going)" };
+static const char *const arrow_hints[] = { "{select}: scroll up a row (held: keeps going)",
+                                           "{select}: scroll down a row (held: keeps going)" };
 
 /* the up arrow is column 0 of the header, the down arrow column 2 */
 static bool arrows_cursor(menu_item_t *item, const char *line, int *start, int *len)
@@ -339,8 +339,8 @@ void memview_build(menu_t *watches)
     address->cursor = address_cursor;
     address->grid = true;
     address->edit = address_edit;
-    address->hint = "L: type an address   d-left/right: a page back/on";
-    address->edit_hint = "d-left/right: digit   d-up/down: change   L: go";
+    address->hint = "{select}: type an address   d-left/right: a page back/on";
+    address->edit_hint = "d-left/right: digit   d-up/down: change   {select}: go";
   }
 
   menu_add_option(&memview_menu, "view", V_N, view_names, get_view, set_view, 0);
@@ -368,8 +368,8 @@ void memview_build(menu_t *watches)
       row->cursor = row_cursor;
       row->grid = true;
       row->edit = row_edit;
-      row->hint = "L: edit this row   d-left/right: a page back/on";
-      row->edit_hint = "d-l/r: move  d-u/d: change  L on address: watch it";
+      row->hint = "{select}: edit this row   d-left/right: a page back/on";
+      row->edit_hint = "d-l/r: move  d-u/d: change  {select} on address: watch it";
     }
   }
   menu_add_return(&memview_menu);

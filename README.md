@@ -20,8 +20,10 @@ Source: [github.com/PracticeROM/sloperina](https://github.com/PracticeROM/sloper
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): the build and test routine. [`CONTRIBUTORS.md`](CONTRIBUTORS.md) and
   [`THANKS.md`](THANKS.md): who made it and special thanks.
 
-Open the menu with **R + right stick down**. **L** selects, the D-pad moves and changes values, **R + D-left**
-goes back.
+Open the menu with **R + right stick down**. **L** selects, the D-pad moves and changes values, **B** (or
+**R + D-left**) goes back. That's the gz preset, the default; the remake preset uses **L** for shortcuts (**L + Plus**
+opens the menu, **A** selects) so **R** stays free for quick select. Every button can be changed in
+**settings > buttons**.
 
 ## Features
 
@@ -36,8 +38,10 @@ goes back.
   memory watches, with display types, labels (gz's keyboard), show/hide, reordering and the wrench to see the value
   in memory; the box can go in any corner or anywhere.
 - **debug**: heap and gz's memory viewer (edit, add watches, follow pointers).
-- **settings**: language, menu size and background, the input display (gz's row or a Switch 2 Pro Controller),
-  levitate (L3 toggle, held X/B up/down, release to hover), frame advance (L or R) with gz's pause icons.
+- **settings**: language, menu size and background, buttons (gz-style combos of up to 3 buttons for every
+  shortcut and menu button, with gz and remake presets), the input display (gz's row or a Switch 2 Pro
+  Controller), levitate (L3 toggle, held X/B up/down, release to hover), frame advance (L + L3 pauses / unpauses,
+  L steps) with gz's pause icons.
 - gz's log of what was done, bottom right.
 
 ## Layout

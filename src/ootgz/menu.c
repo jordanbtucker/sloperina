@@ -240,7 +240,7 @@ static void log_item(menu_item_t *item, uint32_t log_count_before)
   bool not_logged = item->log_label && !item->log_label[0];
   if (logged_itself || unnamed || not_logged)
     return;
-  const char *name = T(item->log_label ? item->log_label : item->label);
+  const char *name = buttons_fill(T(item->log_label ? item->log_label : item->label));
   char value[64] = "";
   switch (item->kind) {
     case MI_CHECK:
@@ -462,7 +462,7 @@ void menu_item_line(menu_item_t *item, char *buf, int len)
 static void item_line(menu_item_t *item, char *buf, int len)
 {
   char value[96] = "", pictured[96];
-  const char *label = T(item->label);
+  const char *label = buttons_fill(T(item->label));
   int picture = item->picture;
   if (picture && item->kind == MI_OPTION && item->choice_pictures) { /* the chosen one's picture */
     int choice = item->get_option(item);
@@ -540,14 +540,14 @@ static const char *item_hint_english(const menu_item_t *item)
   if (item->hint)
     return item->hint[0] ? item->hint : 0; /* "": no hint */
   switch (item->kind) {
-    case MI_NUMBER: return item->action ? "d-left/right: change (L held: by 10)   L: fill"
-                                        : "d-left/right: change (L held: by 10)";
-    case MI_OPTION: return "d-left/right or L: change";
+    case MI_NUMBER: return item->action ? "d-left/right: change   {minus_10} / {plus_10}: by 10   {select}: fill"
+                                        : "d-left/right: change   {minus_10} / {plus_10}: by 10";
+    case MI_OPTION: return "d-left/right or {select}: change";
     default: return 0;
   }
 }
 
-static const char *item_hint(const menu_item_t *item) { return T(item_hint_english(item)); }
+static const char *item_hint(const menu_item_t *item) { return buttons_fill(T(item_hint_english(item))); }
 
 /* --- drawing --------------------------------------------------------------------------------- */
 
@@ -670,9 +670,9 @@ static const char *current_hint(const menu_t *menu)
 {
   const char *hint = menu->n_items ? item_hint(&menu->items[menu->selected]) : 0;
   if (menu_editing && menu_editing->edit_hint)
-    hint = T(menu_editing->edit_hint);
+    hint = buttons_fill(T(menu_editing->edit_hint));
   if (menu->scroll_text)
-    hint = T("d-up/down: scroll   L: return");
+    hint = buttons_fill(T("d-up/down: scroll   {select}: return"));
   return hint;
 }
 

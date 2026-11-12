@@ -172,7 +172,7 @@ void osk_build(void)
     text_item->cursor = text_cursor;
     text_item->grid = true;
     text_item->on_change = text_move;
-    text_item->hint = "d-left/right: cursor   L: done";
+    text_item->hint = "d-left/right: cursor   {select}: done";
   }
   for (int row = 0; row <= N_KEY_ROWS; row++) { /* the key rows, then the command row */
     menu_item_t *row_item = menu_add_action(&osk_menu, "", key_press, row);
@@ -181,8 +181,8 @@ void osk_build(void)
       row_item->cursor = key_cursor;
       row_item->grid = true; /* the keys in columns, as the cursor moves between rows */
       row_item->on_change = key_move;
-      row_item->hint = row < N_KEY_ROWS ? "d-left/right: key   L: type it"
-                                        : "L: shift / space / backspace / delete / done";
+      row_item->hint = row < N_KEY_ROWS ? "d-left/right: key   {select}: type it"
+                                        : "{select}: shift / space / backspace / delete / done";
     }
   }
   menu_add_return(&osk_menu);

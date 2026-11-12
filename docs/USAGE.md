@@ -7,6 +7,7 @@ A quick guide to get you practising. For every option in every menu, see the [ma
 - [Getting started](#getting-started)
 - [Controls](#controls)
 - [Shortcuts in the game](#shortcuts-in-the-game)
+- [Changing the buttons](#changing-the-buttons)
 - [How do I...?](#how-do-i)
 - [Things on the screen](#things-on-the-screen)
 - [Your settings](#your-settings)
@@ -18,57 +19,83 @@ A quick guide to get you practising. For every option in every menu, see the [ma
    sloperinaGZ works with **The Legend of Zelda: Ocarina of Time (Switch 2), versions 1.0.0 and 1.1.1**.
 2. **Start the game.** For a few seconds the bottom-right corner shows sloperinaGZ's name, version and
    build date, the website, and how to open the menu. That means it's running.
-3. **Open the menu:** hold **R** and push the **right stick down**. Do the same again to close it.
+3. **Open the menu:** hold **R** and push the **right stick down** (with the remake preset: **L + Plus**). Do the
+   same again to close it. The start-up message shows the buttons set now.
 
 While the menu is open, the game doesn't see your controller, so you can't accidentally walk off a ledge while
 picking an option.
 
 ## Controls
 
-The menu works like gz's: the D-pad moves, **L** selects.
+The menu works like gz's: the D-pad moves, **select** selects. Every button can be changed
+([Changing the buttons](#changing-the-buttons)); these are the two presets':
 
-| Button | In the menu |
-|---|---|
-| **R + right stick down** | Open or close the menu |
-| **D-pad up / down** | Move up and down the list |
-| **D-pad left / right** | Change a value (switches, numbers), or pick a button on a row of buttons |
-| **L** | Select: open a menu, tick a box, press a button |
-| **L held + D-pad left / right** | Change a number by 10 |
-| **R + D-pad left** | Go back one menu (at the top: close the menu) |
-| **return** (the last item) | Go back one menu |
+| Button | gz preset (the default) | remake preset |
+|---|---|---|
+| Open / close the menu | **R + right stick down** | **L + Plus** |
+| Move | **D-pad up / down** | **D-pad up / down** |
+| Change a value, or pick a button in a row | **D-pad left / right** | **D-pad left / right** |
+| **select**: open a menu, tick a box, press a button | **L** | **A** |
+| **number -10 / +10** | **L + D-pad left / right** | **ZL / ZR** |
+| **return**: back one page (on the first page: close the menu) | **B**, or **R + D-pad left** | **B** |
 
-The line at the bottom of the menu always tells you what the buttons do for the item you're on.
+The **return** item at the end of each page also goes back one page. The line at the bottom of the menu always
+tells you what the buttons do for the item you're on, with the buttons set now. This guide calls them by what they
+do: **select**, **return**, **number -10 / +10**.
 
 **What the items look like**
 
 | Looks like | It is | Use |
 |---|---|---|
-| `items >` | A menu | **L** opens it |
-| `☑ name` | A checkbox | **L** (or D-pad left / right) ticks and unticks it |
-| `name  < value >` | A switch | **D-pad left / right** (or **L**) changes it |
-| `name  < 3 > / 9` | A number | **D-pad left / right**; hold **L** to change by 10; tap **L** to fill (where it says so) |
+| `items >` | A menu | **select** opens it |
+| `☑ name` | A checkbox | **select** (or D-pad left / right) ticks and unticks it |
+| `name  < value >` | A switch | **D-pad left / right** (or **select**) changes it |
+| `name  < 3 > / 9` | A number | **D-pad left / right**; **number -10 / +10** to change by 10; **select** to fill (where it says so) |
 | grey text | A heading or information | Can't be selected |
-| `✕ ☑ 🔧 label ...` | A row of buttons | **D-pad left / right** picks a button (it turns blue), **L** presses it |
+| `✕ ☑ 🔧 label ...` | A row of buttons | **D-pad left / right** picks a button (it turns blue), **select** presses it |
 
 ## Shortcuts in the game
 
 These work with the menu closed.
 
-| Shortcut | What it does |
-|---|---|
-| **R + right stick down** | Open the menu |
-| **R + D-pad right** | Show or hide the watches |
-| **R + A + D-pad left** | Start or stop the timer |
-| **R + B + D-pad left** | Reset the timer |
-| **R + B + D-pad right** | Reset the lag counter |
-| **L3** | Levitate: start floating / drop (when it's turned on in settings) |
-| **X / B** (held, while floating) | Levitate up / down; release to hover |
-| **R3** (held, while floating) | Hold height even if X/B is held |
-| **L** (or **R**) | Frame advance: pause, then one frame per tap, frames continuously while held (on at first; **settings > frame advance**) |
-| **L + L3** (or **R + L3**) | Frame advance: let the game run again |
+| Shortcut | gz preset (the default) | remake preset |
+|---|---|---|
+| Open / close the menu | **R + right stick down** | **L + Plus** |
+| Save position: where Link is and which way he faces | **R + D-pad up** | **L + D-pad up** |
+| Load position: put Link back there (same map only) | **R + D-pad down** | **L + D-pad down** |
+| Show / hide the watch window | **R + D-pad right** | **L + D-pad right** |
+| Start / stop the timer | **R + A + D-pad left** | **L + R + D-pad up** |
+| Reset the timer | **R + B + D-pad left** | **L + R + D-pad down** |
+| Reset the lag counter | **R + B + D-pad right** | **L + R + D-pad left** |
+| Reset **JS Height** (jump slash height) to its maximum, as returning to the title screen does | **R + A + D-pad right** | **L + R + D-pad right** |
+| Levitate: start / stop floating (when enabled) | **L3** | **L + D-pad left** |
+| Frame advance: pause / unpause (when enabled) | **L + L3** | **L + L3** |
+| Frame advance, while paused: tap for a frame, hold to advance frames slowly | **L** | **L** |
+| **X / B** (held, while floating) | Levitate up / down; release to hover | the same |
+| **R3** (held, while floating) | Hold height even if X/B is held | the same |
+
+The gz preset passes every button to the game, as gz does. The remake preset uses **L** as the shortcut button:
+L, and anything pressed while it's held, isn't passed to the game, so **R** stays free for quick select. Pick
+either in **settings > buttons**, or set each one yourself there.
 
 Everything you do shows for a moment in the bottom-right corner (gz's log), for example `infinite magic on` or
 `warp to kokiri forest`.
+
+## Changing the buttons
+
+**settings > buttons** lists every shortcut and menu button with the buttons set now.
+
+- Select a row, then hold up to 3 buttons (a stick direction can be one) and let go: that's the new combo. The
+  last button you press is the one that has to go down last. **return** alone cancels (except on the return
+  rows, where it's a valid choice).
+- A combo another row already has swaps with it.
+- **shortcut button**: hold it for shortcuts. It, and anything pressed while it's held, isn't passed to the game.
+  D-pad left / right clears it (none: every button is passed to the game).
+- **step frame**: the frame advance button, used while frame advance has the game paused. **slow advance delay**:
+  how long it's held before frames advance slowly.
+- **use gz preset (default)** and **use remake preset** set them all at once.
+
+They're saved in `sloperinaGZ/settings.ini` with the other settings.
 
 ## How do I...?
 
@@ -86,7 +113,7 @@ swap with the ones you had as the other age.)
 (none / hookshot / longshot) and **big sword** give you one at a time.
 
 **...refill health, magic or rupees?**
-**link > health** (or **rupees**), then tap **L**. Magic is in **inventory > collection > magic**.
+**link > health** (or **rupees**), then **select**. Magic is in **inventory > collection > magic**.
 
 **...never run out?**
 **cheats**: infinite energy, rupees, magic, and each kind of ammo.
@@ -96,26 +123,28 @@ swap with the ones you had as the other age.)
 untick the checkbox on a watch to show or hide just that one.
 
 **...watch a value in memory?**
-**watches**, press the **+**, type the address (D-pad left / right to pick a digit, up / down to change it), **L**
-to add it. Or open **debug > memory**, find the value, edit the row (**L**) and press **L** on its address.
+**watches**, press the **+**, type the address (D-pad left / right to pick a digit, up / down to change it),
+**select** to add it. Or open **debug > memory**, find the value, edit the row (**select**) and press **select** on
+its address.
 
 **...move the watches box?**
-**watches > watches box > move watches position**, then the D-pad (hold it to go faster). **L** when it's in place.
+**watches > watches box > move watches position**, then the D-pad (hold it to go faster). **select** when it's in place.
 
 **...see the invisible walls?**
 **scene > collision > show**. Cyan walls stop Link; red ones are walls he's inside.
 
 **...float around?**
-Turn on **settings > levitate > enabled**, close the menu, press **L3**. Push the left stick to move; hold **X** to rise or **B** to descend. Release both to hover.
+Turn on **settings > levitate > enabled**, close the menu, press the levitate shortcut (**L3**, or **L + D-pad left** with the remake preset). Push the left stick to move; hold **X** to rise or **B** to descend. Release both to hover.
 With **through walls** enabled, Link can pass through walls and ceilings;
 held B commands descent through floors. Exit geometry before toggling floating off.
 **vertical speed** controls both directions; an old saved value of 0 uses 4 units/s for X/B.
-**L3** stops floating, restores collision and starts the fall with zero vertical speed. Normal
+The levitate shortcut again stops floating, restores collision and starts the fall with zero vertical speed. Normal
 gravity resumes, with fall-distance protection through the first landing. Void triggers still apply.
 
 **...look at a trick frame by frame?**
-Turn on frame advance with **settings > frame advance > enabled** (it's off to begin with). In the game, tap **L** to pause, tap **L** for one frame or hold it
-to play slowly, and press **L + L3** to carry on. Buttons and stick directions you press while paused are given to
+Turn on frame advance with **settings > frame advance > enabled** (it's off to begin with). In the game, press
+**L + L3** to pause, tap **L** for one frame or hold it to advance frames slowly, and press **L + L3** again to
+unpause (the same in both presets). Buttons and stick directions you press while paused are given to
 the next frame.
 
 **...see my inputs on screen?**
@@ -143,12 +172,16 @@ the SD card in `sloperinaGZ/settings.ini`, plain text you can edit. Your game sa
 
 ## Something's not right
 
-- **Nothing happens when I press R + right stick down.** Check the sloperinaGZ splash showed at start-up. If not,
+- **Nothing happens when I press R + right stick down.** With the remake preset it's **L + Plus**; the start-up
+  message shows the buttons set now. Check the sloperinaGZ splash showed at start-up. If not,
   sloperinaGZ needs the module and the IPS for the active game build. See [INSTALLATION.md](../INSTALLATION.md).
-- **The game doesn't react to a button.** Frame advance takes **L** (or **R**) away from the game while it's on
-  (except in the game's pause screen, unless **settings > frame advance > in pause screen** is on),
-  levitate takes **L3**, plus **X/B/R3** while floating. Turn them off in **settings** if you need those buttons.
-- **The screen froze.** Frame advance may have paused the game: press **L + L3** (or **R + L3**).
+- **The game doesn't react to a button.** Frame advance's **step frame** button (**L**) isn't passed to the game
+  while frame advance is enabled (except in the game's pause screen, unless **settings > frame advance > in pause
+  screen** is on). Levitate takes **L3** while enabled, plus **X/B/R3** while floating. With a **shortcut button**
+  set (the remake preset's **L**), it and anything pressed while it's held aren't passed to the game. Turn these
+  off or change them in **settings** if you need those buttons.
+- **The screen froze.** Frame advance may have paused the game: press **L + L3** (or the combo set for
+  **pause / unpause**).
 - **Something I ticked didn't change in the game.** Some things only show after the game redraws them: open and
   close the pause screen, or go through a loading zone. Story stages apply after a loading zone.
 - **"settings won't be kept".** The game couldn't open the SD card; everything works, it just won't remember your
