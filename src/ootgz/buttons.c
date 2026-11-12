@@ -465,11 +465,17 @@ bool set_shortcut_button(uint32_t button)
     input_shortcut_button = button;
     if (frame_advance_button_setting == button)
       frame_advance_button_setting = 0;
+    bool moved[MB_COUNT] = { false };
     for (int m = 0; button && m < MB_COUNT; m++)
-      if (menu_buttons[m] == button)
+      if (menu_buttons[m] == button) {
         menu_buttons[m] = 0; /* buttons_check finds it another */
+        moved[m] = true;
+      }
     gfx_logf("shortcut button: %s", button ? button_name(button) : "none (all buttons are passed to the game)");
     buttons_check();
+    for (int m = 0; m < MB_COUNT; m++)
+      if (moved[m])
+        gfx_logf("menu %s moved to %s", menu_button_labels[m], button_name(menu_buttons[m]));
     return true;
   }
   for (int c = 0; c < CMD_COUNT; c++) {
@@ -619,12 +625,6 @@ static bool capture_combo(menu_item_t *it)
   uint32_t all = capture_all;
   capture_armed = false; /* (if it's tried again) */
   bool back_row = c == CMD_MENU_BACK || c == CMD_MENU_BACK_OTHER;
-  if (c == CMD_MENU_BACK_OTHER && all == BTN_MINUS) {
-    command_bindings[c] = NONE;
-    gfx_logf("%s: none", command_labels[c]);
-    capturing = false;
-    return false;
-  }
   if (!back_row && all == cancel_button()) {
     gfx_logf("%s: unchanged", command_labels[c]);
     capturing = false;
@@ -654,7 +654,7 @@ static bool capture_button(menu_item_t *it)
   int index = ROW_INDEX(it->data);
   bool done;
   switch (ROW_KIND(it->data)) {
-    case ROW_SHORTCUT: done = set_shortcut_button(button == BTN_MINUS ? 0 : button); break;
+    case ROW_SHORTCUT: done = set_shortcut_button(button); break;
     case ROW_FRAME_ADVANCE: done = set_frame_advance_button(button); break;
     default: /* not the d-pad (it moves the cursor) nor the shortcut button: keep waiting */
       done = set_menu_button((menu_button_t)index, button);
@@ -669,9 +669,7 @@ static void start_capture(menu_item_t *it)
 {
   int kind = ROW_KIND(it->data), index = ROW_INDEX(it->data);
   if (kind == ROW_COMMAND && index == CMD_MENU_BACK_OTHER)
-    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons, let go to save   Minus alone: none");
-  else if (kind == ROW_SHORTCUT)
-    snprintf(capture_hint, sizeof(capture_hint), "press the new button   Minus: none");
+    snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons, let go to save");
   else if (kind == ROW_COMMAND && index == CMD_MENU_BACK)
     snprintf(capture_hint, sizeof(capture_hint), "hold up to 3 buttons, let go to save");
   else if (kind == ROW_COMMAND)
@@ -712,6 +710,31 @@ static void slow_play_text(menu_item_t *it, int choice, char *buf, int len)
 }
 
 
+/* d-left/right on the rows that can be none: none, or back to what it was */
+static void toggle_none(menu_item_t *it, int dir)
+{
+  (void)dir;
+  static uint32_t last_shortcut = BTN_L;
+  static binding_t last_back = COMBO(BTN_R, BTN_DLEFT);
+  if (ROW_KIND(it->data) == ROW_SHORTCUT) {
+    if (input_shortcut_button) {
+      last_shortcut = input_shortcut_button;
+      set_shortcut_button(0);
+    } else {
+      set_shortcut_button(last_shortcut);
+    }
+    return;
+  }
+  binding_t *back = &command_bindings[CMD_MENU_BACK_OTHER];
+  if (back->button) {
+    last_back = *back;
+    *back = NONE;
+    gfx_logf("%s: none", command_labels[CMD_MENU_BACK_OTHER]);
+  } else {
+    set_command_binding(CMD_MENU_BACK_OTHER, last_back); /* (says why if it can't) */
+  }
+}
+
 static void act_gz(menu_item_t *it)
 {
   (void)it;
@@ -745,10 +768,12 @@ static menu_item_t *capture_row(menu_t *m, const char *label, int data, bool com
 void buttons_build_menu(menu_t *m)
 {
   menu_init(m, "buttons", 28);
-  capture_row(m, "shortcut button", ROW(ROW_SHORTCUT, 0), false,
+  menu_item_t *shortcut = capture_row(m, "shortcut button", ROW(ROW_SHORTCUT, 0), false,
               "Hold this button for shortcuts. While it's held, no buttons are passed to the game, so a "
               "shortcut does nothing in the game. The shortcut button itself is never passed to the game. "
-              "None: all buttons are passed to the game.");
+              "None: all buttons are passed to the game. D-left/right: none.");
+  if (shortcut)
+    shortcut->on_change = toggle_none;
   menu_add_heading(m, "shortcuts");
   static const command_t shortcuts[] = {
     CMD_MENU, CMD_LOAD_POSITION, CMD_SAVE_POSITION, CMD_LEVITATE, CMD_WATCHES,
@@ -774,8 +799,10 @@ void buttons_build_menu(menu_t *m)
   capture_row(m, menu_button_labels[MB_SELECT], ROW(ROW_MENU_BUTTON, MB_SELECT), false,
               "select, then press the new button");
   capture_row(m, command_labels[CMD_MENU_BACK], ROW(ROW_COMMAND, CMD_MENU_BACK), true, COMBO_HINT);
-  capture_row(m, command_labels[CMD_MENU_BACK_OTHER], ROW(ROW_COMMAND, CMD_MENU_BACK_OTHER), true,
-              "A second combo that goes back. Minus: none.");
+  menu_item_t *alternate = capture_row(m, command_labels[CMD_MENU_BACK_OTHER], ROW(ROW_COMMAND, CMD_MENU_BACK_OTHER),
+                                       true, "A second combo that goes back. D-left/right: none.");
+  if (alternate)
+    alternate->on_change = toggle_none;
   capture_row(m, command_labels[CMD_NUMBER_MINUS_10], ROW(ROW_COMMAND, CMD_NUMBER_MINUS_10), true,
               "On a number: take 10 off. With select in the combo, select alone still fills the number. " COMBO_HINT);
   capture_row(m, command_labels[CMD_NUMBER_PLUS_10], ROW(ROW_COMMAND, CMD_NUMBER_PLUS_10), true,
