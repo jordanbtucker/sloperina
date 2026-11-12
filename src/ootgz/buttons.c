@@ -824,6 +824,6 @@ void buttons_build_menu(menu_t *m)
     gz->hint = "R for shortcuts, L for frame advance and select, as in gz; all buttons are passed to the game";
   menu_item_t *remake = menu_add_action(m, "use remake layout", act_remake, 0);
   if (remake)
-    remake->hint = "L for shortcuts and not passed to the game, so R stays free for quick select; A selects, B returns";
+    remake->hint = "L is used for shortcuts, and that button is not passed to the game, so R stays free for quick select; A selects, B returns";
   menu_add_return(m);
 }
