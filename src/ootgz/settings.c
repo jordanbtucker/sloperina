@@ -9,7 +9,7 @@
  *   hide_in_game_menus=0|1 (no watches, input display or log while the game's pause screen or map is open)
  *   input_display_position=<gfx_corner_t>   input_display_x=, input_display_y= (custom: thousandths)
  *   settings_version=<n> (SETTINGS_VERSION when saved: what settings_load has updated the file for)
- *   shortcut_button=L   frame_advance_button=Shortcut|<button>   bind_<command>=L+Down or R+A+Left (up
+ *   shortcut_button=None|L   frame_advance_button=Shortcut|<button>   bind_<command>=L+Down or R+A+Left (up
  *   to 3, the last one pressed last)   menu_back=B   menu_back_other=R+Left|None   menu_select=A
  *   menu_minus_10=ZL   menu_plus_10=ZR   menu_by_10=buttons|select   slow_play_delay=200..1000
  *   (settings > buttons; names as buttons.c's: A B X Y L3 R3 L R ZL ZR Plus Minus Left Up Right Down, and
@@ -446,7 +446,8 @@ static void parse_line(const char *line, snapshot_t *s, bool *have_list)
   } else if (starts_with(line, WATCH_LABEL_KEY)) {
     parse_watch_label(line + sizeof(WATCH_LABEL_KEY) - 1, s);
   } else if (key_is(line, "shortcut_button", &value)) {
-    s->shortcut_button = (int32_t)button_from_name(value, (int)strlen(value));
+    uint32_t button = button_from_name(value, (int)strlen(value));
+    s->shortcut_button = button ? (int32_t)button : value[0] == 'N' || value[0] == 'n' ? 0 : -1; /* -1: unusable */
   } else if (key_is(line, "frame_advance_button", &value)) {
     /* a button, or "Shortcut" (and files from before: 0 L, 1 R, both now the shortcut button) */
     s->frame_advance_button = (int32_t)button_from_name(value, (int)strlen(value));
@@ -588,7 +589,7 @@ static void save_settings_file(const snapshot_t *s)
                   (int)s->input_y, (int)s->menu_style, (int)s->hide_in_game_menus);
   if (n < (int)sizeof(buf))
     n += snprintf(buf + n, sizeof(buf) - n, "shortcut_button=%s\nframe_advance_button=%s\nmenu_by_10=%s\n",
-                  button_key((uint32_t)s->shortcut_button),
+                  s->shortcut_button ? button_key((uint32_t)s->shortcut_button) : "None",
                   s->frame_advance_button ? button_key((uint32_t)s->frame_advance_button) : "Shortcut",
                   s->by_10_with_select ? "select" : "buttons");
   for (int c = 0; c < CMD_COUNT && n < (int)sizeof(buf); c++) {

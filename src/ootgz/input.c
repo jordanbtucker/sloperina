@@ -183,6 +183,10 @@ static uint64_t held_with_l;
 
 static void hide_l_chords(void *states, int count)
 {
+  if (!input_shortcut_button) { /* none (the gz layout, as on master): nothing hidden */
+    held_with_l = 0;
+    return;
+  }
   for (int i = count - 1; i >= 0; i--) {
     npad_state_t *state = (npad_state_t *)((char *)states + i * NPAD_STATE_SIZE);
     if (input_block_game || !(state->attributes & NPAD_ATTR_CONNECTED)) /* the game's other controllers */

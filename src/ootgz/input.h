@@ -21,7 +21,7 @@ uint32_t input_held(void);
 uint32_t input_pressed(void);      /* went down this frame */
 /* All of `mask` held and at least one of them pressed this frame. */
 bool     input_combo(uint32_t mask);
-/* the shortcut button (default L; settings > buttons, buttons.h): see input_slow_play */
+/* the shortcut button (settings > buttons, buttons.h; 0: none, nothing hidden): see input_slow_play */
 extern uint32_t input_shortcut_button;
 /* Pressed, or held long enough to repeat (menu navigation). */
 bool     input_repeat(uint32_t button);

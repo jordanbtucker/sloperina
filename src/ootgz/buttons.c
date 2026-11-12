@@ -25,10 +25,12 @@ int32_t slow_play_delay_ms;
 
 /* --- the layouts --------------------------------------------------------------------------------- */
 
-#define DEFAULT_SHORTCUT BTN_L
+#define DEFAULT_SHORTCUT 0 /* none: the gz layout (master), nothing hidden from the game */
+#define DEFAULT_FRAME_ADVANCE BTN_L
 #define DEFAULT_SLOW_PLAY_DELAY 400
 
-static const binding_t default_bindings[CMD_COUNT] = {
+/* the remake layout: L shortcuts (the game never sees L), R left to the game (quick select, JSC) */
+static const binding_t remake_bindings[CMD_COUNT] = {
   [CMD_MENU] = COMBO(BTN_L, BTN_PLUS),
   [CMD_LOAD_POSITION] = COMBO(BTN_L, BTN_DDOWN),
   [CMD_SAVE_POSITION] = COMBO(BTN_L, BTN_DUP),
@@ -42,10 +44,11 @@ static const binding_t default_bindings[CMD_COUNT] = {
   [CMD_MENU_BACK] = COMBO(0, BTN_B),
   [CMD_MENU_BACK_OTHER] = NONE,
 };
-static const uint32_t default_menu_buttons[MB_COUNT] = { BTN_A, BTN_ZL, BTN_ZR };
+static const uint32_t remake_menu_buttons[MB_COUNT] = { BTN_A, BTN_ZL, BTN_ZR };
 
-/* master's (origin/master's ootgz.c, position.c, watches.c, levitate.c, menu.c) */
-static const binding_t master_bindings[CMD_COUNT] = {
+/* the gz layout, the default: master's (origin/master's ootgz.c, position.c, watches.c, levitate.c,
+ * menu.c), with no shortcut button (nothing hidden from the game) */
+static const binding_t gz_bindings[CMD_COUNT] = {
   [CMD_MENU] = COMBO(BTN_R, BTN_RS_DOWN),
   [CMD_LOAD_POSITION] = COMBO(BTN_R, BTN_DDOWN),
   [CMD_SAVE_POSITION] = COMBO(BTN_R, BTN_DUP),
@@ -59,7 +62,7 @@ static const binding_t master_bindings[CMD_COUNT] = {
   [CMD_MENU_BACK] = COMBO(0, BTN_B),
   [CMD_MENU_BACK_OTHER] = COMBO(BTN_R, BTN_DLEFT),
 };
-static const uint32_t master_menu_buttons[MB_COUNT] = { BTN_L, BTN_ZL, BTN_ZR };
+static const uint32_t gz_menu_buttons[MB_COUNT] = { BTN_L, BTN_ZL, BTN_ZR };
 
 static const char *const command_setting_keys[CMD_COUNT] = {
   "bind_menu", "bind_load_position", "bind_save_position", "bind_frame_advance", "bind_levitate",
@@ -294,18 +297,18 @@ static void layout_into_globals(const binding_t *bindings, const uint32_t *menu)
 void buttons_defaults(void)
 {
   input_shortcut_button = DEFAULT_SHORTCUT;
-  frame_advance_button_setting = 0;
-  layout_into_globals(default_bindings, default_menu_buttons);
-  by_10_with_select = false;
+  frame_advance_button_setting = DEFAULT_FRAME_ADVANCE;
+  layout_into_globals(gz_bindings, gz_menu_buttons);
+  by_10_with_select = true;
   slow_play_delay_ms = DEFAULT_SLOW_PLAY_DELAY;
 }
 
-void buttons_master(void)
+void buttons_remake(void)
 {
-  input_shortcut_button = BTN_R;
-  frame_advance_button_setting = BTN_L;
-  layout_into_globals(master_bindings, master_menu_buttons);
-  by_10_with_select = true;
+  input_shortcut_button = BTN_L;
+  frame_advance_button_setting = 0;
+  layout_into_globals(remake_bindings, remake_menu_buttons);
+  by_10_with_select = false;
   slow_play_delay_ms = DEFAULT_SLOW_PLAY_DELAY;
 }
 
@@ -357,12 +360,14 @@ static bool free_for(int c, binding_t b)
 
 void buttons_check(void)
 {
-  if (!is_button(input_shortcut_button)) {
-    log_printf("buttons: shortcut button unusable: back to %s", button_name(DEFAULT_SHORTCUT));
+  if (input_shortcut_button && !is_button(input_shortcut_button)) {
+    log_printf("buttons: shortcut button unusable: back to none");
     input_shortcut_button = DEFAULT_SHORTCUT;
   }
   if (frame_advance_button_setting == input_shortcut_button)
     frame_advance_button_setting = 0;
+  if (!frame_advance_button_setting && !input_shortcut_button) /* no shortcut button to be it */
+    frame_advance_button_setting = DEFAULT_FRAME_ADVANCE;
   if (frame_advance_button_setting && !is_button(frame_advance_button_setting)) {
     log_printf("buttons: frame advance button unusable: back to the shortcut button");
     frame_advance_button_setting = 0;
@@ -381,7 +386,7 @@ void buttons_check(void)
     if (menu_buttons[m])
       continue;
     for (int bit = -1; bit < 16 && !menu_buttons[m]; bit++) { /* its default, else the first free one */
-      uint32_t candidate = bit < 0 ? default_menu_buttons[m] : 1u << bit;
+      uint32_t candidate = bit < 0 ? remake_menu_buttons[m] : 1u << bit;
       if (plain_menu_button(candidate) && !is_menu_button(candidate, m))
         menu_buttons[m] = candidate;
     }
@@ -405,8 +410,8 @@ void buttons_check(void)
     if (!same_binding(command_bindings[c], bad))
       continue;
     command_bindings[c] = NONE;
-    if (free_for(c, default_bindings[c])) {
-      command_bindings[c] = default_bindings[c];
+    if (free_for(c, remake_bindings[c])) {
+      command_bindings[c] = remake_bindings[c];
     } else {
       for (int bit = 0; bit < 16 && !command_bindings[c].button; bit++) {
         binding_t candidate = COMBO(input_shortcut_button, 1u << bit);
@@ -439,12 +444,26 @@ static uint32_t swap_bits(uint32_t bits, uint32_t a, uint32_t b)
 bool set_shortcut_button(uint32_t button)
 {
   uint32_t old = input_shortcut_button;
-  if (!is_button(button)) {
+  if (button && !is_button(button)) {
     gfx_logf("the shortcut button can't be a stick direction");
     return false;
   }
   if (button == old)
     return true;
+  if (!button || !old) {
+    /* to or from none: the combos stay as they are (what's hidden from the game is all that changes) */
+    if (!button && !frame_advance_button_setting)
+      frame_advance_button_setting = old; /* frame advance keeps its button */
+    input_shortcut_button = button;
+    if (frame_advance_button_setting == button)
+      frame_advance_button_setting = 0;
+    for (int m = 0; button && m < MB_COUNT; m++)
+      if (menu_buttons[m] == button)
+        menu_buttons[m] = 0; /* buttons_check finds it another */
+    gfx_logf("shortcut button: %s", button ? button_name(button) : "none (nothing hidden from the game)");
+    buttons_check();
+    return true;
+  }
   for (int c = 0; c < CMD_COUNT; c++) {
     command_bindings[c].held = swap_bits(command_bindings[c].held, old, button);
     command_bindings[c].button = swap_bits(command_bindings[c].button, old, button);
@@ -552,7 +571,7 @@ static void row_value(menu_item_t *it, char *buf, int len)
 {
   int index = ROW_INDEX(it->data);
   switch (ROW_KIND(it->data)) {
-    case ROW_SHORTCUT: snprintf(buf, len, "%s", button_name(input_shortcut_button)); break;
+    case ROW_SHORTCUT: snprintf(buf, len, "%s", input_shortcut_button ? button_name(input_shortcut_button) : "none"); break;
     case ROW_FRAME_ADVANCE:
       if (frame_advance_button_setting)
         snprintf(buf, len, "%s", button_name(frame_advance_button_setting));
@@ -627,7 +646,7 @@ static bool capture_button(menu_item_t *it)
   int index = ROW_INDEX(it->data);
   bool done;
   switch (ROW_KIND(it->data)) {
-    case ROW_SHORTCUT: done = set_shortcut_button(button); break;
+    case ROW_SHORTCUT: done = set_shortcut_button(button == BTN_MINUS ? 0 : button); break;
     case ROW_FRAME_ADVANCE: done = set_frame_advance_button(button); break;
     default: /* not the d-pad (it moves the cursor) nor the shortcut button: keep waiting */
       done = set_menu_button((menu_button_t)index, button);
@@ -655,7 +674,7 @@ static void start_capture(menu_item_t *it)
     snprintf(capture_hint, sizeof(capture_hint), "press the new button (%s: the shortcut button)",
              button_name(input_shortcut_button));
   else
-    snprintf(capture_hint, sizeof(capture_hint), "press the new button");
+    snprintf(capture_hint, sizeof(capture_hint), "press the new button   Minus: none");
   capture_armed = false;
   capture_all = capture_last = 0;
   capturing = true;
@@ -686,18 +705,18 @@ static const char *const by_10_names[] = { "-10 / +10 buttons", "select held + d
 static int get_by_10(menu_item_t *it) { (void)it; return by_10_with_select; }
 static void set_by_10(menu_item_t *it, int choice) { (void)it; by_10_with_select = choice != 0; }
 
-static void act_reset(menu_item_t *it)
+static void act_gz(menu_item_t *it)
 {
   (void)it;
   buttons_defaults();
-  gfx_logf("buttons reset to defaults");
+  gfx_logf("buttons: gz layout");
 }
 
-static void act_master(menu_item_t *it)
+static void act_remake(menu_item_t *it)
 {
   (void)it;
-  buttons_master();
-  gfx_logf("buttons: master's layout");
+  buttons_remake();
+  gfx_logf("buttons: remake layout");
 }
 
 static menu_item_t *capture_row(menu_t *m, const char *label, int data, bool combo, const char *hint)
@@ -751,9 +770,11 @@ void buttons_build_menu(menu_t *m)
     slow->hint = "how long the frame advance button is held, while paused, before slow play starts";
   }
   menu_end_group(m);
-  menu_add_action(m, "reset buttons to defaults", act_reset, 0);
-  menu_item_t *master = menu_add_action(m, "use master's layout", act_master, 0);
-  if (master)
-    master->hint = "R shortcuts as on master (the game never sees R), frame advance on L, L selects";
+  menu_item_t *gz = menu_add_action(m, "use gz layout (default)", act_gz, 0);
+  if (gz)
+    gz->hint = "as before (gz's): R shortcuts, frame advance on L, L selects; the game sees every button";
+  menu_item_t *remake = menu_add_action(m, "use remake layout", act_remake, 0);
+  if (remake)
+    remake->hint = "L shortcuts (the game never sees L), R left for quick select; A selects, B goes back";
   menu_add_return(m);
 }

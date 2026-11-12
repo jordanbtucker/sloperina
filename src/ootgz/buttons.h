@@ -1,5 +1,6 @@
 /* The practice ROM's buttons, all of them user-set (settings > buttons, and settings.ini):
- * - the shortcut button (L): the game never sees it, nor anything pressed while it's held
+ * - the shortcut button (none by default, as on master; the remake layout's is L): the game never sees
+ *   it, nor anything pressed while it's held
  * - the frame advance button (the shortcut button unless set): tapped while paused it's a frame, held
  *   slow play; the game never sees it while frame advance is on
  * - each shortcut: a combo of up to 3 buttons (a stick direction can be one), as in gz: it fires when
@@ -75,8 +76,8 @@ const char *command_label(command_t c);       /* "load position" */
 const char *menu_button_key(menu_button_t b); /* "select": settings.ini's menu_<key> */
 const char *menu_button_label(menu_button_t b);
 
-void buttons_defaults(void);
-void buttons_master(void); /* master's layout (gz's) */
+void buttons_defaults(void); /* the gz layout (master's) */
+void buttons_remake(void);   /* the remake layout: L shortcuts */
 /* after loading: anything unusable goes back to its default (and the log says so) */
 void buttons_check(void);
 
