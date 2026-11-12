@@ -1,7 +1,6 @@
 #include "input.h"
 
 #include "got.h"
-#include "menu.h"
 #include "sys.h"
 
 /* nn::hid state structs (Switch 1 layout: sampling number, buttons, two sticks, attributes;
@@ -132,15 +131,7 @@ bool input_combo(uint32_t mask)
 
 bool input_slow_play;
 
-uint32_t input_shortcut_button = BTN_L, input_layer_button = BTN_R;
-
-bool input_shortcut(bool layer, uint32_t button)
-{
-  if (input_slow_play || menu_capturing() || !(buttons_held & input_shortcut_button) ||
-      ((buttons_held & input_layer_button) != 0) != layer)
-    return false;
-  return (buttons_held & button) == button && (buttons_pressed & button);
-}
+uint32_t input_shortcut_button = BTN_L;
 
 bool input_repeat(uint32_t button)
 {

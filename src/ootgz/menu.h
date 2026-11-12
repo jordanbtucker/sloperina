@@ -104,7 +104,7 @@ void menu_back(void);       /* up one level (or ends an edit); closes at the top
 void menu_goto(menu_t *m);  /* open menu m, wherever it is (gz's menu_enter) */
 void menu_edit(menu_item_t *it); /* start editing it (it->edit gets the input) */
 extern menu_item_t *menu_editing;
-/* an edit that takes every button (capture): the menu's own buttons and the shortcuts are off */
+/* an edit that takes every button (capture, buttons.c): the menu's own buttons and the shortcuts are off */
 bool menu_capturing(void);
 void menu_input(void);      /* navigation, from the frame hook while open */
 void menu_draw(void);       /* through gfx.h */

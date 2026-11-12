@@ -9,7 +9,7 @@
 
 /* --- the item pool --------------------------------------------------------------------------- */
 
-#define POOL_ITEMS 1430
+#define POOL_ITEMS 1432
 
 static menu_item_t pool[POOL_ITEMS];
 static int pool_used;
@@ -199,7 +199,6 @@ void menu_goto(menu_t *menu)
 }
 
 void menu_edit(menu_item_t *item) { menu_editing = item; }
-bool menu_capturing(void) { return menu_editing && menu_editing->capture; }
 
 void menu_open(menu_t *root)
 {
@@ -360,9 +359,39 @@ static void activate(menu_item_t *item)
 
 /* --- input ----------------------------------------------------------------------------------- */
 
-/* Numbers: ZL / ZR change them by NUMBER_BIG_STEP; true if they did this frame */
+/* settings > buttons > by 10 = select held (master's): select held makes d-left/right go by
+ * NUMBER_BIG_STEP, so select's own press (fill) happens when it's let go, and only if the d-pad wasn't
+ * used meanwhile. */
+static bool select_down_on_number, select_used_for_big_steps;
+
+static bool number_input_select_held(menu_item_t *item)
+{
+  uint32_t select = menu_buttons[MB_SELECT];
+  bool select_held = (input_held() & select) != 0;
+  if (input_pressed() & select) {
+    select_down_on_number = true;
+    select_used_for_big_steps = false;
+  }
+  if (select_held && (input_repeat(BTN_DLEFT) || input_repeat(BTN_DRIGHT))) {
+    select_used_for_big_steps = true;
+    change(item, input_repeat(BTN_DLEFT) ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
+    return true;
+  }
+  if (!select_held && select_down_on_number) {
+    select_down_on_number = false;
+    if (!select_used_for_big_steps)
+      activate(item);
+    return true;
+  }
+  return (input_pressed() & select) != 0; /* just pressed: wait for it to be let go */
+}
+
+/* Numbers: the -10 / +10 buttons change them by NUMBER_BIG_STEP (or select held + d-left/right); true if
+ * they used this frame's input */
 static bool number_input(menu_item_t *item)
 {
+  if (by_10_with_select)
+    return number_input_select_held(item);
   if (input_repeat(menu_buttons[MB_MINUS_10]) || input_repeat(menu_buttons[MB_PLUS_10])) {
     change(item, input_repeat(menu_buttons[MB_MINUS_10]) ? -NUMBER_BIG_STEP : NUMBER_BIG_STEP);
     return true;

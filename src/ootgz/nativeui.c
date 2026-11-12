@@ -1822,13 +1822,16 @@ static float draw_controls(mrow_t *r, float x, bool draw)
   r->em = gamefont_em_for_height(GF_REGULAR, text_h);
   float cap = cap_height(GF_REGULAR, r->em);
   r->baseline = (int)((r->h + cap) / 2 + 0.5f);
-  binding_t close = command_bindings[CMD_MENU];
-  const struct { uint32_t glyphs[3]; const char *what; } controls[] = {
-    { { button_glyph_of(menu_buttons[MB_SELECT]) }, "select" },
-    { { button_glyph_of(menu_buttons[MB_BACK]) }, "return" },
-    { { button_glyph_of(input_shortcut_button), close.layer ? button_glyph_of(input_layer_button) : button_glyph_of(close.button),
-        close.layer ? button_glyph_of(close.button) : 0 }, "close" },
+  struct { uint32_t glyphs[COMBO_MAX]; const char *what; } controls[] = {
+    { { button_glyph_of(menu_buttons[MB_SELECT]) }, "select" }, { { 0 }, "return" }, { { 0 }, "close" },
   };
+  const command_t combos[] = { CMD_MENU_BACK, CMD_MENU };
+  for (int k = 0; k < 2; k++) {
+    uint32_t parts[COMBO_MAX];
+    int n = binding_buttons(command_bindings[combos[k]], parts);
+    for (int g = 0; g < n; g++)
+      controls[k + 1].glyphs[g] = button_glyph_of(parts[g]);
+  }
   rgb_t dim = styles[GFX_DIM].colour, bright = styles[GFX_NORMAL].colour;
   float gap = r->em * 0.3f;
   float end = x;
@@ -1839,7 +1842,7 @@ static float draw_controls(mrow_t *r, float x, bool draw)
       draw_run(what, n, GF_REGULAR, r->em, (int)(x * 64), r->baseline, dim);
     x += gamefont_measure(GF_REGULAR, r->em, what, n) / 64.0f + gap;
     x += button_glyph(r, controls[i].glyphs[0], x, draw, bright);
-    for (int g = 1; g < 3 && controls[i].glyphs[g]; g++) {
+    for (int g = 1; g < COMBO_MAX && controls[i].glyphs[g]; g++) {
       x += gap;
       if (draw)
         draw_run("+", 1, GF_REGULAR, r->em, (int)(x * 64), r->baseline, dim);

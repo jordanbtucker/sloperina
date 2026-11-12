@@ -21,13 +21,8 @@ uint32_t input_held(void);
 uint32_t input_pressed(void);      /* went down this frame */
 /* All of `mask` held and at least one of them pressed this frame. */
 bool     input_combo(uint32_t mask);
-/* The practice ROM's shortcuts (buttons.h): the shortcut button + `button`, or the shortcut button + the
- * layer button + `button` (layer), with `button` pressed this frame. Without the layer, it doesn't fire
- * while the layer button is held, so the two never overlap. None fire while input_slow_play is set, nor
- * while the menu is capturing a button (settings > buttons). */
-bool     input_shortcut(bool layer, uint32_t button);
-/* the shortcut button (default L) and the layer button (default R): settings > buttons */
-extern uint32_t input_shortcut_button, input_layer_button;
+/* the shortcut button (default L; settings > buttons, buttons.h): see input_slow_play */
+extern uint32_t input_shortcut_button;
 /* Pressed, or held long enough to repeat (menu navigation). */
 bool     input_repeat(uint32_t button);
 void     input_sticks(int32_t *lx, int32_t *ly, int32_t *rx, int32_t *ry);

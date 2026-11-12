@@ -9,9 +9,11 @@
  *   hide_in_game_menus=0|1 (no watches, input display or log while the game's pause screen or map is open)
  *   input_display_position=<gfx_corner_t>   input_display_x=, input_display_y= (custom: thousandths)
  *   settings_version=<n> (SETTINGS_VERSION when saved: what settings_load has updated the file for)
- *   shortcut_button=L   layer_button=R   bind_<command>=L+Down or L+R+Down   menu_<button>=A
- *   slow_play_delay=200..1000 (settings > buttons; names as buttons.c's: A B X Y L3 R3 L R ZL ZR Plus Minus
- *   Left Up Right Down; a shortcut's own button also LSLeft..LSDown, RSLeft..RSDown)
+ *   shortcut_button=L   frame_advance_button=Shortcut|<button>   bind_<command>=L+Down or R+A+Left (up
+ *   to 3, the last one pressed last)   menu_back=B   menu_back_other=R+Left|None   menu_select=A
+ *   menu_minus_10=ZL   menu_plus_10=ZR   menu_by_10=buttons|select   slow_play_delay=200..1000
+ *   (settings > buttons; names as buttons.c's: A B X Y L3 R3 L R ZL ZR Plus Minus Left Up Right Down, and
+ *   in combos LSLeft..LSDown, RSLeft..RSDown)
  *
  * (save_settings_file writes every key; parse_line reads them.)
  *
@@ -78,7 +80,6 @@ typedef struct {
   int32_t frame_advance;
   int32_t frame_advance_in_pause;
   int32_t pause_display;
-  int32_t frame_advance_button;
   int32_t menu_scale;
   int32_t input_display;
   int32_t input_display_bg;
@@ -106,9 +107,11 @@ typedef struct {
   int32_t menu_style;
   int32_t hide_in_game_menus;
   /* settings > buttons (buttons.h): BTN_* bits; 0 = unusable, back to its default (buttons_check) */
-  int32_t shortcut_button, layer_button;
-  int32_t bind_layer[CMD_COUNT], bind_button[CMD_COUNT];
+  int32_t shortcut_button;
+  int32_t frame_advance_button; /* 0: the shortcut button */
+  int32_t bind_held[CMD_COUNT], bind_button[CMD_COUNT];
   int32_t menu_buttons[MB_COUNT];
+  int32_t by_10_with_select;
   int32_t slow_play_delay;
 } snapshot_t;
 
@@ -153,7 +156,6 @@ static snapshot_t take_snapshot(void)
   s.frame_advance = frame_advance;
   s.frame_advance_in_pause = frame_advance_in_pause;
   s.pause_display = pause_display;
-  s.frame_advance_button = frame_advance_button;
   snprintf(s.lang, sizeof(s.lang), "%s", lang_code());
   s.input_display = input_display;
   s.input_display_bg = input_display_bg;
@@ -176,9 +178,10 @@ static snapshot_t take_snapshot(void)
   s.menu_style = gfx_style;
   s.hide_in_game_menus = hide_in_game_menus;
   s.shortcut_button = (int32_t)input_shortcut_button;
-  s.layer_button = (int32_t)input_layer_button;
+  s.frame_advance_button = (int32_t)frame_advance_button_setting;
+  s.by_10_with_select = by_10_with_select;
   for (int c = 0; c < CMD_COUNT; c++) {
-    s.bind_layer[c] = command_bindings[c].layer;
+    s.bind_held[c] = (int32_t)command_bindings[c].held;
     s.bind_button[c] = (int32_t)command_bindings[c].button;
   }
   for (int b = 0; b < MB_COUNT; b++)
@@ -224,7 +227,6 @@ static void apply_snapshot(const snapshot_t *s)
   frame_advance = s->frame_advance != 0;
   frame_advance_in_pause = s->frame_advance_in_pause != 0;
   pause_display = s->pause_display != 0;
-  frame_advance_button = s->frame_advance_button == 1;
 
   input_display = s->input_display != 0;
   input_display_bg = s->input_display_bg != 0;
@@ -262,9 +264,10 @@ static void apply_snapshot(const snapshot_t *s)
   enemy_hp_xray = s->enemy_hp_xray != 0;
 
   input_shortcut_button = (uint32_t)s->shortcut_button;
-  input_layer_button = (uint32_t)s->layer_button;
+  frame_advance_button_setting = (uint32_t)s->frame_advance_button;
+  by_10_with_select = s->by_10_with_select != 0;
   for (int c = 0; c < CMD_COUNT; c++)
-    command_bindings[c] = (binding_t){ s->bind_layer[c] != 0, (uint32_t)s->bind_button[c] };
+    command_bindings[c] = (binding_t){ (uint32_t)s->bind_held[c], (uint32_t)s->bind_button[c] };
   for (int b = 0; b < MB_COUNT; b++)
     menu_buttons[b] = (uint32_t)s->menu_buttons[b];
   slow_play_delay_ms = s->slow_play_delay;
@@ -329,7 +332,6 @@ static const struct { const char *key; size_t field_offset; } int_keys[] = {
   INT_KEY("frame_advance", frame_advance),
   INT_KEY("frame_advance_in_pause", frame_advance_in_pause),
   INT_KEY("pause_display", pause_display),
-  INT_KEY("frame_advance_button", frame_advance_button),
   INT_KEY("input_display", input_display),
   INT_KEY("input_display_background", input_display_bg),
   INT_KEY("input_display_style", input_style),
@@ -407,12 +409,11 @@ static bool parse_button_line(const char *line, snapshot_t *s)
   char key[40];
   const char *value;
   for (int c = 0; c < CMD_COUNT; c++) {
-    snprintf(key, sizeof(key), "bind_%s", command_key((command_t)c));
-    if (key_is(line, key, &value)) {
+    if (key_is(line, command_setting_key((command_t)c), &value)) {
       binding_t b;
-      if (!command_chord_parse(value, &b))
-        b = (binding_t){ false, 0 }; /* unusable: buttons_check gives it its default */
-      s->bind_layer[c] = b.layer;
+      if (!binding_parse(value, &b))
+        b = (binding_t){ 0, 0xFFFFFFFF }; /* unusable: buttons_check gives it its default */
+      s->bind_held[c] = (int32_t)b.held;
       s->bind_button[c] = (int32_t)b.button;
       return true;
     }
@@ -446,8 +447,11 @@ static void parse_line(const char *line, snapshot_t *s, bool *have_list)
     parse_watch_label(line + sizeof(WATCH_LABEL_KEY) - 1, s);
   } else if (key_is(line, "shortcut_button", &value)) {
     s->shortcut_button = (int32_t)button_from_name(value, (int)strlen(value));
-  } else if (key_is(line, "layer_button", &value)) {
-    s->layer_button = (int32_t)button_from_name(value, (int)strlen(value));
+  } else if (key_is(line, "frame_advance_button", &value)) {
+    /* a button, or "Shortcut" (and files from before: 0 L, 1 R, both now the shortcut button) */
+    s->frame_advance_button = (int32_t)button_from_name(value, (int)strlen(value));
+  } else if (key_is(line, "menu_by_10", &value)) {
+    s->by_10_with_select = value[0] == 's' || value[0] == 'S';
   } else if (parse_button_line(line, s)) {
   } else {
     for (size_t k = 0; k < N_INT_KEYS; k++) {
@@ -573,26 +577,24 @@ static void save_settings_file(const snapshot_t *s)
                    (int)s->enemy_hp);
   if (n < (int)sizeof(buf))
     n += snprintf(buf + n, sizeof(buf) - n,
-                  "language=%s\nframe_advance=%d\nframe_advance_in_pause=%d\nframe_advance_button=%d\npause_display=%d\n"
+                  "language=%s\nframe_advance=%d\nframe_advance_in_pause=%d\npause_display=%d\n"
                   "menu_size=%d\n"
                   "input_display=%d\ninput_display_background=%d\ninput_display_parts=%d\n"
                   "input_display_style=%d\ninput_display_size=%d\ninput_display_position=%d\n"
                   "input_display_x=%d\ninput_display_y=%d\nmenu_style=%d\nhide_in_game_menus=%d\n",
-                  s->lang, (int)s->frame_advance, (int)s->frame_advance_in_pause, (int)s->frame_advance_button, (int)s->pause_display,
+                  s->lang, (int)s->frame_advance, (int)s->frame_advance_in_pause, (int)s->pause_display,
                   (int)s->menu_scale, (int)s->input_display, (int)s->input_display_bg, (int)s->input_parts,
                   (int)s->input_style, (int)s->input_size, (int)s->input_position, (int)s->input_x,
                   (int)s->input_y, (int)s->menu_style, (int)s->hide_in_game_menus);
   if (n < (int)sizeof(buf))
-    n += snprintf(buf + n, sizeof(buf) - n, "shortcut_button=%s\nlayer_button=%s\n",
-                  button_key((uint32_t)s->shortcut_button), button_key((uint32_t)s->layer_button));
+    n += snprintf(buf + n, sizeof(buf) - n, "shortcut_button=%s\nframe_advance_button=%s\nmenu_by_10=%s\n",
+                  button_key((uint32_t)s->shortcut_button),
+                  s->frame_advance_button ? button_key((uint32_t)s->frame_advance_button) : "Shortcut",
+                  s->by_10_with_select ? "select" : "buttons");
   for (int c = 0; c < CMD_COUNT && n < (int)sizeof(buf); c++) {
-    if (s->bind_layer[c])
-      n += snprintf(buf + n, sizeof(buf) - n, "bind_%s=%s+%s+%s\n", command_key((command_t)c),
-                    button_key((uint32_t)s->shortcut_button), button_key((uint32_t)s->layer_button),
-                    button_key((uint32_t)s->bind_button[c]));
-    else
-      n += snprintf(buf + n, sizeof(buf) - n, "bind_%s=%s+%s\n", command_key((command_t)c),
-                    button_key((uint32_t)s->shortcut_button), button_key((uint32_t)s->bind_button[c]));
+    char combo[40];
+    binding_key((binding_t){ (uint32_t)s->bind_held[c], (uint32_t)s->bind_button[c] }, combo, sizeof(combo));
+    n += snprintf(buf + n, sizeof(buf) - n, "%s=%s\n", command_setting_key((command_t)c), combo);
   }
   for (int m = 0; m < MB_COUNT && n < (int)sizeof(buf); m++)
     n += snprintf(buf + n, sizeof(buf) - n, "menu_%s=%s\n", menu_button_key((menu_button_t)m),

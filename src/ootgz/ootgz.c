@@ -70,7 +70,6 @@ bool frame_advance = false;
 bool frame_advance_in_pause = false;
 bool pause_display = true;
 bool hide_in_game_menus = true;
-int frame_advance_button; /* no longer used (was 0 L, 1 R); kept in the settings file */
 
 /* settings > hide in game menus: the game's own menus (Plus, Minus) are open, or opening (from the frame
  * they start to fade in). gfx_frame keeps the HUD shown while sloperinaGZ's menu is open (it can be moved
@@ -85,7 +84,7 @@ static bool hud_hidden(void)
 #define FA_HOLD_MS slow_play_delay_ms /* settings > buttons */
 #define FA_REPEAT_MS 66
 #define BUTTON_BITS 0xFFFF /* the buttons, not the stick-direction bits above them */
-#define FA_STEP_BUTTON input_shortcut_button /* L: a frame (held: slow play); settings > buttons */
+#define FA_STEP_BUTTON frame_advance_button() /* L: a frame (held: slow play); settings > buttons */
 
 
 /* While paused, how long to sleep between polls of the controller (about one 60 Hz frame). */
@@ -173,7 +172,7 @@ static bool menu_controls(void)
     menu_open(&menu_root);
   else if (menu_current && command_pressed(CMD_MENU))
     menu_close(); /* the open shortcut toggles it */
-  else if (menu_current && (input_pressed() & menu_buttons[MB_BACK]))
+  else if (menu_current && (command_pressed(CMD_MENU_BACK) || command_pressed(CMD_MENU_BACK_OTHER)))
     menu_back();
   else if (menu_current) {
     watches_sync();
@@ -197,7 +196,7 @@ static void fa_buffer_input(void)
   if (menu_current) /* what's pressed for the menu isn't for the game */
     return;
   uint32_t held = input_held();
-  if (held & input_shortcut_button) /* L and what's pressed with it are the shortcuts', not the game's */
+  if (held & (input_shortcut_button | FA_STEP_BUTTON)) /* L and what's pressed with it are the shortcuts', not the game's */
     return;
   buffered_buttons |= held & BUTTON_BITS;
 
@@ -303,8 +302,8 @@ static void fa_frame(void)
     fa_paused = true;
     static char notice[80];
     char toggle[48];
-    command_chord_text(CMD_FRAME_ADVANCE, toggle, sizeof(toggle));
-    snprintf(notice, sizeof(notice), "frame advance: %s a frame, %s to run", button_name(input_shortcut_button), toggle);
+    binding_text(command_bindings[CMD_FRAME_ADVANCE], toggle, sizeof(toggle));
+    snprintf(notice, sizeof(notice), "frame advance: %s a frame, %s to run", button_name(FA_STEP_BUTTON), toggle);
     gfx_notice(notice);
     /* The game shows nothing new while it's held, so this frame is let through first, with the pause
      * icon on it: the screen shows the game is paused (and hasn't crashed). Held from the next one. */
